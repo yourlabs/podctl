@@ -8,21 +8,26 @@ class Packages:
             upgrade='sudo apk upgrade',
             install='sudo apk add',
         ),
+        dnf=dict(
+            update='sudo dnf update',
+            upgrade='sudo dnf upgrade',
+            install='sudo dnf install  --setopt=install_weak_deps=False --best --assumeyes',  # noqa
+        ),
+        yum=dict(
+            update='sudo yum update',
+            upgrade='sudo yum upgrade',
+            install='sudo yum install',
+        ),
     )
 
     def __init__(self, *packages):
         self.packages = list(packages)
+        self.mgr = None
 
-    def pre_build(self, script):
+    def init_build(self, script):
+        base = script.container.variable('base')
         for mgr, cmds in self.mgrs.items():
-            cmd = [
-                'podman',
-                'run',
-                script.container.variable('base'),
-                'which',
-                mgr
-            ]
-            print('+ ' + ' '.join(cmd))
+            cmd = ['podman', 'run', base, 'sh', '-c', f'type {mgr}']
             try:
                 subprocess.check_call(cmd)
                 self.mgr = mgr
@@ -30,6 +35,8 @@ class Packages:
                 break
             except subprocess.CalledProcessError:
                 continue
+        if not self.mgr:
+            raise Exception('Packages does not yet support this distro')
 
     def build(self, script):
         cache = f'.cache/{self.mgr}'
@@ -49,6 +56,8 @@ class Packages:
                 echo Cache recent enough, skipping index update.
             fi
             ''')
+        elif self.mgr == 'dnf':
+            script.run('sh -c "echo keepcache=True >> /etc/dnf/dnf.conf"')
 
         script.run(self.cmds['upgrade'])
         script.run(' '.join([self.cmds['install']] + self.packages))

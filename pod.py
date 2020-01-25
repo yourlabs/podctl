@@ -7,8 +7,8 @@ from podctl import *
 
 
 podctl = Container(
-    Base('alpine'),
-    Packages('bash', 'python3'),
+    Base('docker.io/centos'),
+    Packages('podman', 'buildah', 'python3'),
     User('app', 1000, '/app'),
     Copy(['setup.py', 'podctl'], '/app'),
     Pip('/app'),
