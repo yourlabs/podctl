@@ -28,4 +28,11 @@ else
     echo Cache recent enough, skipping index update.
 fi
 buildah run --user root $ctr -- apk upgrade
-buildah run --user root $ctr -- apk add bash
+buildah run --user root $ctr -- apk add shadow
+if buildah run $ctr -- id 1000; then
+    i=$(buildah run $ctr -- id -n 1000)
+    buildah run $ctr -- usermod --home-dir /app --no-log-init 1000 $i
+else
+    buildah run $ctr -- useradd --home-dir /app --uid 1000 app
+fi
+buildah config --user app $ctr

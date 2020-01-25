@@ -4,12 +4,13 @@ docker & docker-compose frustrated me, podctl unfrustrates me.
 
 import asyncio
 import cli2
+import importlib
 import os
-import subprocess
 import sys
-import textwrap
 
+from .container import Container
 from .pod import Pod
+from .service import Service
 
 
 class BuildStreamProtocol(asyncio.subprocess.SubprocessStreamProtocol):
@@ -32,54 +33,26 @@ class BuildStreamProtocol(asyncio.subprocess.SubprocessStreamProtocol):
 @cli2.option('debug', help='Print debug output', color=cli2.GREEN, alias='d')
 async def build(service=None, **kwargs):
     procs = []
-    for name, container in console_script.pod.items():
-        if not container.base:
+    for name, service in console_script.pod.services.items():
+        container = service.container
+        if not container.variable('base'):
             continue
 
         script = f'.podctl_build_{name}.sh'
         with open(script, 'w+') as f:
-            f.write(str(container.script_build()))
+            f.write(str(container.script('build')))
 
         loop = asyncio.events.get_event_loop()
-        protocol_factory = lambda: BuildStreamProtocol(
-            container=container,
-            limit=asyncio.streams._DEFAULT_LIMIT,
-            loop=loop,
-        )
+
+        def protocol_factory():
+            return BuildStreamProtocol(
+                service,
+                limit=asyncio.streams._DEFAULT_LIMIT,
+                loop=loop,
+            )
         transport, protocol = await loop.subprocess_shell(
             protocol_factory,
             f'buildah unshare bash -eux {script}',
-        )
-        procs.append(asyncio.subprocess.Process(
-            transport,
-            protocol,
-            loop,
-        ))
-
-    for proc in procs:
-        await proc.communicate()
-
-
-@cli2.option('debug', help='Print debug output', color=cli2.GREEN, alias='d')
-async def up(service=None, **kwargs):
-    procs = []
-    for name, service in console_script.pod.services.items():
-        if 'base' not in service:
-            continue
-
-        script = f'.podctl_up_{name}.sh'
-        with open(script, 'w+') as f:
-            f.write(str(service.build()))
-
-        loop = asyncio.events.get_event_loop()
-        protocol_factory = lambda: BuildStreamProtocol(
-            service=service,
-            limit=asyncio.streams._DEFAULT_LIMIT,
-            loop=loop,
-        )
-        transport, protocol = await loop.subprocess_shell(
-            protocol_factory,
-            f'bash -eux {script}',
         )
         procs.append(asyncio.subprocess.Process(
             transport,
@@ -114,8 +87,25 @@ class ConsoleScript(cli2.ConsoleScript):
         if command.name != 'help':
             self.path = self.parser.options['file']
             self.home = self.parser.options['home']
-            with open(self.path) as f:
-                self.pod = Pod.factory(self.path)
+            self.containers = dict()
+            self.pods = dict()
+            self.pod = None
+            spec = importlib.util.spec_from_file_location('pod', self.path)
+            pod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(pod)
+            for name, value in pod.__dict__.items():
+                if isinstance(value, Container):
+                    self.containers[name] = value
+                elif isinstance(value, Pod):
+                    self.pods[name] = value
+
+            if 'pod' in self.pods:
+                self.pod = self.pods['pod']
+            if not self.pod:
+                self.pod = Pod(*[
+                    Service(name, value, restart='no')
+                    for name, value in self.containers.items()
+                ])
         return super().call(command)
 
 

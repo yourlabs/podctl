@@ -1,11 +1,6 @@
-import collections
-import importlib.util
 
 
-class Pod(collections.UserDict):
-    @classmethod
-    def factory(cls, path):
-        spec = importlib.util.spec_from_file_location('pod', path)
-        pod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(pod)
-        return pod.pod
+class Pod:
+    def __init__(self, *services, **scripts):
+        self.scripts = scripts
+        self.services = {s.name: s for s in services}

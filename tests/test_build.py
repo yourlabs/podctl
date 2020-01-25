@@ -4,9 +4,16 @@ import sys
 
 from podctl.container import Container
 from podctl.build import BuildScript
+from podctl.visitors import (
+    Base,
+    Copy,
+    Packages,
+    User,
+)
 
 
-def script_test(name, result):
+def script_test(name, *visitors):
+    result = str(Container(*visitors).script('build'))
     path = os.path.join(
         os.path.dirname(__file__),
         f'test_{name}.sh',
@@ -15,7 +22,7 @@ def script_test(name, result):
     if not os.path.exists(path):
         with open(path, 'w+') as f:
             f.write(result)
-        raise Exception('Fixture created test_build_packages.sh')
+        raise Exception(f'Fixture created test_{name}.sh')
     with open(path, 'r') as f:
         expected = f.read()
     result = difflib.unified_diff(
@@ -28,13 +35,43 @@ def script_test(name, result):
 
 
 def test_build_empty():
-    result = str(BuildScript(Container()))
-    script_test('build_empty', result)
+    script_test(
+        'build_empty',
+        Base('alpine'),
+    )
 
 
 def test_build_packages():
+    script_test(
+        'build_packages',
+        Base('alpine'),
+        Packages('bash'),
+    )
+
+
+def test_build_user():
+    script_test(
+        'build_user',
+        Base('alpine'),
+        User('app', 1000, '/app'),
+    )
+
+
+def test_build_copy():
+    script_test(
+        'build_copy',
+        Base('alpine'),
+        Copy(os.path.dirname(__file__), '/app'),
+    )
+
+
+'''
+
+def test_build_files():
     result = str(BuildScript(Container(
         base='alpine',
-        packages=['bash'],
+        files=[
+            Directory('/app', '0500').add('setup.py', 'podctl'),
+        ]
     )))
-    script_test('build_packages', result)
+    '''

@@ -1,0 +1,10 @@
+*.pyc
+__pycache__
+.cache/
+.coverage
+.eggs/
+.podctl_build_django.sh
+.podctl_build_podctl.sh
+.setupmeta.version
+.testmondata
+*.egg-info

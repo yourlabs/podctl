@@ -1,0 +1,15 @@
+qa:
+  stage: test
+  image: yourlabs/python
+  script: flake8 podctl
+
+test:
+  stage: test
+  image: yourlabs/python
+  script: pip install -e . && py.test -v tests
+
+pypi:
+  stage: deploy
+  image: yourlabs/python
+  script: pypi-release
+  only: [tags]
