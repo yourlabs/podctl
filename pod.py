@@ -12,6 +12,6 @@ podctl = Container(
     User('app', 1000, '/app'),
     Copy(['setup.py', 'podctl'], '/app'),
     Pip('/app'),
-    Config(cmd='podctl'),
-    Tag('yourlabs/podctl'),
+    Config(cmd='podctl', author='jpic'),
+    Commit('docker.io/yourlabs/podctl'),
 )

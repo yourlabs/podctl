@@ -1,8 +1,9 @@
 from .base import Base  # noqa
+from .commit import Commit  # noqa
 from .config import Config  # noqa
 from .copy import Copy  # noqa
 from .packages import Packages  # noqa
 from .pip import Pip  # noqa
+from .push import Push  # noqa
 from .run import Run  # noqa
-from .tag import Tag  # noqa
 from .user import User  # noqa
