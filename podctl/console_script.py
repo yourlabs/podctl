@@ -60,8 +60,14 @@ async def build(service=None, **kwargs):
             loop,
         ))
 
+    codes = []
     for proc in procs:
         await proc.communicate()
+        codes.append(proc.returncode)
+
+    for code in codes:
+        if code != 0:
+            return code
 
 
 class ConsoleScript(cli2.ConsoleScript):
