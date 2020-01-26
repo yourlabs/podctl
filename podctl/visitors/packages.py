@@ -10,8 +10,8 @@ class Packages:
         ),
         dnf=dict(
             update='sudo dnf update',
-            upgrade='sudo dnf upgrade',
-            install='sudo dnf install  --setopt=install_weak_deps=False --best --assumeyes',  # noqa
+            upgrade='sudo dnf upgrade --exclude container-selinux --best --assumeyes',
+            install='sudo dnf install --exclude container-selinux --setopt=install_weak_deps=False --best --assumeyes',  # noqa
         ),
         yum=dict(
             update='sudo yum update',
