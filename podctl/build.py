@@ -2,7 +2,7 @@ from .script import Script
 
 
 class BuildScript(Script):
-    export = ('base', 'repo', 'tag', 'image')
+    export = ('base', 'repo')
 
     def __init__(self, container):
         super().__init__()
