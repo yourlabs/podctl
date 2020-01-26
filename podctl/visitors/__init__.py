@@ -4,6 +4,5 @@ from .config import Config  # noqa
 from .copy import Copy  # noqa
 from .packages import Packages  # noqa
 from .pip import Pip  # noqa
-from .push import Push  # noqa
 from .run import Run  # noqa
 from .user import User  # noqa
