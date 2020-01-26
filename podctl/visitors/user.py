@@ -24,11 +24,11 @@ class User:
 
     def build(self, script):
         script.append(f'''
-            if buildah run $ctr -- id {self.uid}; then
-                i=$(buildah run $ctr -- id -n {self.uid})
-                buildah run $ctr -- usermod --home-dir {self.home} --no-log-init {self.uid} $i
+            if {script._run('id ' + str(self.uid))}; then
+                i=$({script._run('id -n ' + str(self.uid))})
+                {script._run('usermod --home-dir ' + self.home + ' --no-log-init ' + str(self.uid) + ' $i')}
             else
-                buildah run $ctr -- useradd --home-dir {self.home} --uid {self.uid} {self.username}
+                {script._run('useradd --home-dir ' + self.home + ' --uid ' + str(self.uid) + ' ' + self.username)}
             fi
         ''')  # noqa
         self.user_created = True
