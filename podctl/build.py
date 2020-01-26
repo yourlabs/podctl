@@ -48,3 +48,4 @@ class BuildScript(Script):
         self.run('sudo mkdir -p ' + dst)
         self.append('mkdir -p ' + src)
         self.append(f'mount -o bind {src} $mnt{dst}')
+        self.append('mounts=("$mnt' + dst + '" "${mounts[@]}")')
