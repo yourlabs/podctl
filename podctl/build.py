@@ -16,15 +16,14 @@ class BuildScript(Script):
             umounts() {
                 for i in "${mounts[@]}"; do
                     umount $i
-                    echo $mounts
                     mounts=("${mounts[@]/$i}")
-                    echo $mounts
                 done
+                buildah unmount $ctr
+                trap - 0
             }
             trap umounts 0
             ctr=$(buildah from $base)
             mnt=$(buildah mount $ctr)
-            mounts=("$mnt" "${mounts[@]}")
         ''')
 
     def config(self, line):
@@ -49,5 +48,3 @@ class BuildScript(Script):
         self.run('sudo mkdir -p ' + dst)
         self.append('mkdir -p ' + src)
         self.append(f'mount -o bind {src} $mnt{dst}')
-        # for unmount trap
-        self.append('mounts=("$mnt%s" "${mounts[@]}")' % dst)

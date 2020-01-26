@@ -40,7 +40,6 @@ class Commit:
 
         script.append(f'''
             umounts
-            trap - 0
             buildah commit --format={self.format} $ctr {self.repo}
         ''')
 
