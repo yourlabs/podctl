@@ -50,10 +50,13 @@ async def build(service=None, **kwargs):
                 limit=asyncio.streams._DEFAULT_LIMIT,
                 loop=loop,
             )
+
+        prefix = '' if os.getenv('BUILDAH_ISOLATION') == 'chroot' else 'buildah unshare'
         transport, protocol = await loop.subprocess_shell(
             protocol_factory,
-            f'buildah unshare bash -eux {script}',
+            prefix + f' bash -eux {script}',
         )
+        print('+ ' + prefix + f' bash -eux {script}')
         procs.append(asyncio.subprocess.Process(
             transport,
             protocol,
