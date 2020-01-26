@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 
@@ -42,11 +43,11 @@ class Packages:
             raise Exception('Packages does not yet support this distro')
 
     def build(self, script):
-        cache = f'.cache/{self.mgr}'
-        script.mount(
-            '$(pwd)/' + cache,
-            f'/var/cache/{self.mgr}'
-        )
+        if 'CACHE_DIR' in os.environ:
+            cache = os.path.join(os.getenv('CACHE_DIR'), self.mgr)
+        else:
+            cache = os.path.join(os.getenv('HOME'), '.cache', self.mgr)
+        script.mount(cache, f'/var/cache/{self.mgr}')
 
         if self.mgr == 'apk':
             # special step to enable apk cache

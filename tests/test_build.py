@@ -16,6 +16,8 @@ from unittest import mock
 from podctl.visitors import packages
 packages.subprocess.check_call = mock.Mock()
 
+os.environ['CACHE_DIR'] = '/test'
+
 
 def script_test(name, *visitors):
     result = str(Container(*visitors).script('build'))
