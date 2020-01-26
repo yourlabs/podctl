@@ -24,7 +24,7 @@ class Packages:
         self.packages = list(packages)
         self.mgr = None
 
-    def init_build(self, script):
+    def pre_build(self, script):
         base = script.container.variable('base')
         for mgr, cmds in self.mgrs.items():
             cmd = ['podman', 'run', base, 'sh', '-c', f'type {mgr}']
