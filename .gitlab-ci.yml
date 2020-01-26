@@ -8,6 +8,11 @@ test:
   image: yourlabs/python
   script: pip install -e . && py.test -v tests
 
+build:
+  stage: test
+  image: yourlabs/podctl
+  script: podctl build
+
 pypi:
   stage: deploy
   image: yourlabs/python
