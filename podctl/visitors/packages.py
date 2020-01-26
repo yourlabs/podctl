@@ -20,9 +20,9 @@ class Packages:
         ),
     )
 
-    def __init__(self, *packages, mgr=None):
+    def __init__(self, *packages, **kwargs):
         self.packages = list(packages)
-        self.mgr = mgr
+        self.mgr = kwargs.pop('mgr')
 
     def pre_build(self, script):
         base = script.container.variable('base')
