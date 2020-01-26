@@ -1,3 +1,6 @@
+import os
+
+
 class Pip:
     def __init__(self, *pip_packages, pip=None):
         self.pip_packages = pip_packages
@@ -16,7 +19,11 @@ class Pip:
                 _pip=pip2
             fi
             ''')
-        script.mount('.cache/pip', '/root/.cache/pip')
+        if 'CACHE_DIR' in os.environ:
+            cache = os.path.join(os.getenv('CACHE_DIR'), 'pip')
+        else:
+            cache = os.path.join(os.getenv('HOME'), '.cache', 'pip')
+        script.mount(cache, '/root/.cache/pip')
         script.run('sudo $_pip install --upgrade pip')
         source = [p for p in self.pip_packages if p.startswith('/')]
         if source:

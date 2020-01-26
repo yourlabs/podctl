@@ -19,8 +19,8 @@ echo "Packages.pre_build"
 echo "User.pre_build"
 echo "Packages.build"
 buildah run --user root $ctr -- mkdir -p /var/cache/apk
-mkdir -p $(pwd)/.cache/apk
-mount -o bind $(pwd)/.cache/apk $mnt/var/cache/apk
+mkdir -p /test/apk
+mount -o bind /test/apk $mnt/var/cache/apk
 mounts=("$mnt/var/cache/apk" "${mounts[@]}")
 buildah run $ctr -- ln -s /var/cache/apk /etc/apk/cache
 old="$(find .cache/apk/ -name APKINDEX.* -mtime +3)"
