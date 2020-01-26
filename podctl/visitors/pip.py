@@ -1,17 +1,21 @@
 class Pip:
-    def __init__(self, *pip_packages):
+    def __init__(self, *pip_packages, pip=None):
         self.pip_packages = pip_packages
+        self.pip = pip
 
     def build(self, script):
-        script.append(f'''
-        if {script._run("bash -c 'type pip3'")}; then
-            _pip=pip3
-        elif {script._run("bash -c 'type pip'")}; then
-            _pip=pip
-        elif {script._run("bash -c 'type pip2'")}; then
-            _pip=pip2
-        fi
-        ''')
+        if self.pip:
+            script.append('_pip=' + self.pip)
+        else:
+            script.append(f'''
+            if {script._run("bash -c 'type pip3'")}; then
+                _pip=pip3
+            elif {script._run("bash -c 'type pip'")}; then
+                _pip=pip
+            elif {script._run("bash -c 'type pip2'")}; then
+                _pip=pip2
+            fi
+            ''')
         script.mount('.cache/pip', '/root/.cache/pip')
         script.run('sudo $_pip install --upgrade pip')
         source = [p for p in self.pip_packages if p.startswith('/')]
