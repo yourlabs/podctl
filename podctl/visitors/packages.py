@@ -20,21 +20,24 @@ class Packages:
         ),
     )
 
-    def __init__(self, *packages):
+    def __init__(self, *packages, mgr=None):
         self.packages = list(packages)
-        self.mgr = None
+        self.mgr = mgr
 
     def pre_build(self, script):
         base = script.container.variable('base')
-        for mgr, cmds in self.mgrs.items():
-            cmd = ['podman', 'run', base, 'sh', '-c', f'type {mgr}']
-            try:
-                subprocess.check_call(cmd)
-                self.mgr = mgr
-                self.cmds = cmds
-                break
-            except subprocess.CalledProcessError:
-                continue
+        if self.mgr:
+            self.cmds = self.mgrs[self.mgr]
+        else:
+            for mgr, cmds in self.mgrs.items():
+                cmd = ['podman', 'run', base, 'sh', '-c', f'type {mgr}']
+                try:
+                    subprocess.check_call(cmd)
+                    self.mgr = mgr
+                    self.cmds = cmds
+                    break
+                except subprocess.CalledProcessError:
+                    continue
         if not self.mgr:
             raise Exception('Packages does not yet support this distro')
 

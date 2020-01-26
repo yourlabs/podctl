@@ -8,7 +8,7 @@ from podctl import *
 
 podctl = Container(
     Base('quay.io/podman/stable'),
-    Packages('python3', 'buildah'),
+    Packages('python3', 'buildah', mgr='dnf'),
     Copy(['setup.py', 'podctl'], '/app'),
     Pip('/app'),
     Config(cmd='podctl', author='jpic'),
