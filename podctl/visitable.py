@@ -17,6 +17,7 @@ class Visitable:
             method = prefix + name
             for visitor in self.visitors:
                 if hasattr(visitor, method):
+                    script.append(f'echo "{type(visitor).__name__}.{method}"')
                     getattr(visitor, method)(script)
 
         return script
