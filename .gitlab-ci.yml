@@ -11,10 +11,10 @@ test:
 build:
   stage: test
   image: yourlabs/podctl
-  script: ls -la .cache && pip install . && CACHE_DIR=$(pwd)/.cache podctl build
+  script: ls -la .cache/dnf && pip install . && CACHE_DIR=$(pwd)/.cache podctl build
   cache:
     paths:
-    - .cache/
+    - .cache
     key: cache
 
 pypi:
