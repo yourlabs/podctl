@@ -11,7 +11,7 @@ test:
 build:
   stage: test
   image: yourlabs/podctl
-  script: podctl build
+  script: pip install . && podctl build
 
 pypi:
   stage: deploy
