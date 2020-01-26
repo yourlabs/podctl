@@ -7,9 +7,8 @@ from podctl import *
 
 
 podctl = Container(
-    Base('docker.io/centos'),
-    Packages('podman', 'buildah', 'python3'),
-    #User('app', 1000, '/app'),
+    Base('quay.io/podman/stable'),
+    Packages('python3', 'buildah'),
     Copy(['setup.py', 'podctl'], '/app'),
     Pip('/app'),
     Config(cmd='podctl', author='jpic'),
