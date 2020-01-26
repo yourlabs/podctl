@@ -10,7 +10,7 @@ class Packages:
         ),
         dnf=dict(
             update='sudo dnf update',
-            upgrade='sudo dnf upgrade --exclude container-selinux --best --assumeyes',
+            upgrade='sudo dnf upgrade --exclude container-selinux --best --assumeyes',  # noqa
             install='sudo dnf install --exclude container-selinux --setopt=install_weak_deps=False --best --assumeyes',  # noqa
         ),
         yum=dict(
@@ -22,7 +22,7 @@ class Packages:
 
     def __init__(self, *packages, **kwargs):
         self.packages = list(packages)
-        self.mgr = kwargs.pop('mgr')
+        self.mgr = kwargs.pop('mgr') if 'mgr' in kwargs else None
 
     def pre_build(self, script):
         base = script.container.variable('base')

@@ -13,3 +13,5 @@ umounts() {
 trap umounts 0
 ctr=$(buildah from $base)
 mnt=$(buildah mount $ctr)
+echo "Copy.init_build"
+echo "Copy.build"
