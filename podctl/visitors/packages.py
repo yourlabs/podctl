@@ -9,6 +9,11 @@ class Packages:
             upgrade='sudo apk upgrade',
             install='sudo apk add',
         ),
+        apt=dict(
+            update='sudo apt-get -y update',
+            upgrade='sudo apt-get -y upgrade',
+            install='sudo apt-get -y install',
+        ),
         dnf=dict(
             update='sudo dnf update',
             upgrade='sudo dnf upgrade --exclude container-selinux --best --assumeyes',  # noqa
