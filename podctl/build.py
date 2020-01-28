@@ -29,14 +29,22 @@ class BuildScript(Script):
     def config(self, line):
         self.append(f'buildah config {line} $ctr')
 
-    def _run(self, cmd):
+    def _run(self, cmd, inject=False):
         user = self.container.variable('username')
+        _cmd = cmd
         if cmd.startswith('sudo '):
-            return f'buildah run --user root $ctr -- {cmd[5:]}'
+            _cmd = _cmd[5:]
+
+        if '\n' in _cmd.strip():
+            # 1337: multiline supports, kindof breaks sudo but really fixes cd
+            _cmd = ' '.join(['bash -eux <<__EOF\n', _cmd, '\n__EOF'])
+
+        if cmd.startswith('sudo '):
+            return f'buildah run --user root $ctr -- {_cmd}'
         elif user and self.container.variable('user_created'):
-            return f'buildah run --user {user} $ctr -- {cmd}'
+            return f'buildah run --user {user} $ctr -- {_cmd}'
         else:
-            return f'buildah run $ctr -- {cmd}'
+            return f'buildah run $ctr -- {_cmd}'
 
     def run(self, cmd):
         self.append(self._run(cmd))

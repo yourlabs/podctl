@@ -4,6 +4,4 @@ class Run:
 
     def build(self, script):
         for command in self.commands:
-            for line in command.split('\n'):
-                if line.strip():
-                    script.run(line.strip())
+            script.run(command)
