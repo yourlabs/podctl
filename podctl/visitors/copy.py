@@ -1,7 +1,7 @@
 class Copy:
-    def __init__(self, src, dst):
-        self.src = src
-        self.dst = dst
+    def __init__(self, *args):
+        self.src = args[:-1]
+        self.dst = args[-1]
 
     def init_build(self, script):
         count = self.dst.count(':')
@@ -14,10 +14,9 @@ class Copy:
             self.owner = script.variable('user')
 
     def build(self, script):
-        if isinstance(self.src, list):
-            script.run(f'sudo mkdir -p {self.dst}')
-            for item in self.src:
-                script.append(f'cp -a {item} $mnt{self.dst}')
+        script.run(f'sudo mkdir -p {self.dst}')
+        for item in self.src:
+            script.append(f'cp -a {item} $mnt{self.dst}')
 
         if self.mode:
             script.run(f'sudo chmod {self.mode} $mnt{self.dst}')
