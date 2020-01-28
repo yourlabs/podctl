@@ -3,4 +3,4 @@ class Npm:
         self.npm_install = install
 
     def build(self, script):
-        script.append('""')
+        script.append(f'cd {self.npm_install} && npm install')
