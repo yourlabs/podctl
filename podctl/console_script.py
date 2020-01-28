@@ -31,9 +31,18 @@ class BuildStreamProtocol(asyncio.subprocess.SubprocessStreamProtocol):
 
 
 @cli2.option('debug', help='Print debug output', color=cli2.GREEN, alias='d')
-async def build(service=None, **kwargs):
+async def build(*services, **kwargs):
     procs = []
-    for name, service in console_script.pod.services.items():
+    if services:
+        services = {
+            k: v
+            for k, v in console_script.pod.services.items()
+            if k in services
+        }
+    else:
+        services = console_script.pod.services
+
+    for name, service in services.items():
         container = service.container
         if not container.variable('base'):
             continue
