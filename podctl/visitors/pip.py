@@ -2,9 +2,10 @@ import os
 
 
 class Pip:
-    def __init__(self, *pip_packages, pip=None):
+    def __init__(self, *pip_packages, pip=None, requirements=None):
         self.pip_packages = pip_packages
         self.pip = pip
+        self.requirements = requirements
 
     def build(self, script):
         if self.pip:
@@ -34,3 +35,6 @@ class Pip:
         nonsource = [p for p in self.pip_packages if not p.startswith('/')]
         if nonsource:
             script.run(f'sudo $_pip install --upgrade {" ".join(source)}')
+
+        if self.requirements:
+            script.run(f'sudo $_pip install --upgrade -r {self.requirements}')
