@@ -64,9 +64,10 @@ async def build(*services, **kwargs):
             prefix = ''
         else:
             prefix = 'buildah unshare '
+        x = 'x' if console_script.parser.options.get('debug', False) else ''
         transport, protocol = await loop.subprocess_shell(
             protocol_factory,
-            prefix + f'bash -eux {script}',
+            prefix + f'bash -eu{x} {script}',
         )
         print('+ ' + prefix + f' bash -eux {script}')
         procs.append(asyncio.subprocess.Process(
