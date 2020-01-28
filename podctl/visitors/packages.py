@@ -67,6 +67,8 @@ class Packages:
             ''')
         elif self.mgr == 'dnf':
             script.run('sh -c "echo keepcache=True >> /etc/dnf/dnf.conf"')
+        else:
+            script.run(self.cmds['update'])
 
         script.run(self.cmds['upgrade'])
         script.run(' '.join([self.cmds['install']] + self.packages))
