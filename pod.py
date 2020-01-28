@@ -16,7 +16,7 @@ podctl = Container(
     sh -c "cd setuptools-* && python3.8 setup.py install"
     easy_install-3.8 pip
     '''),
-    Copy(['setup.py', 'podctl'], '/app'),
+    Copy('setup.py', 'podctl', '/app'),
     Pip('/app', pip='pip3.8'),
     Config(cmd='podctl', author='jpic'),
     Commit('docker.io/yourlabs/podctl'),
