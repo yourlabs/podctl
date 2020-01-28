@@ -52,9 +52,9 @@ class Packages:
             cache = os.path.join(os.getenv('CACHE_DIR'), self.mgr)
         else:
             cache = os.path.join(os.getenv('HOME'), '.cache', self.mgr)
-        script.mount(cache, f'/var/cache/{self.mgr}')
 
         if self.mgr == 'apk':
+            script.mount(cache, f'/var/cache/{self.mgr}')
             # special step to enable apk cache
             script.run('ln -s /var/cache/apk /etc/apk/cache')
             script.append(f'''
@@ -66,9 +66,22 @@ class Packages:
             fi
             ''')
         elif self.mgr == 'dnf':
+            script.mount(cache, f'/var/cache/{self.mgr}')
             script.run('sh -c "echo keepcache=True >> /etc/dnf/dnf.conf"')
-        else:
-            script.run(self.cmds['update'])
-
+        elif self.mgr == 'apt':
+            script.run('sudo rm /etc/apt/apt.conf.d/docker-clean')
+            cache_archives = os.path.join(cache, 'archives')
+            script.mount(cache_archives, f'/var/cache/apt/archives')
+            cache_lists = os.path.join(cache, 'lists')
+            script.mount(cache_lists, f'/var/lib/apt/lists')
+            script.append(f'''
+            old="$(find {cache_lists} -name lastup -mtime +3)"
+            if [ -n "$old" ] || ! ls {cache_lists}/lastup; then
+                {script._run(self.cmds['update'])}
+                touch {cache_lists}/lastup
+            else
+                echo Cache recent enough, skipping index update.
+            fi
+            ''')
         script.run(self.cmds['upgrade'])
         script.run(' '.join([self.cmds['install']] + self.packages))
