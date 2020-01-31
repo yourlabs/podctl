@@ -11,7 +11,7 @@ test:
 build:
   stage: test
   image: yourlabs/podctl
-  script: pip install . && CACHE_DIR=$(pwd)/.cache podctl build
+  script: pip install . && CACHE_DIR=$(pwd)/.cache podctl build -d
   cache:
     paths:
     - .cache
