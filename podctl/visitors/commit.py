@@ -48,6 +48,9 @@ class Commit:
             buildah commit --format={self.format} $ctr {self.repo}
         ''')
 
+        if 'master' in self.tags:
+            self.tags.append('latest')
+
         if self.tags:
             tags = ' '.join([f'{self.repo}:{tag}' for tag in self.tags])
             script.append(f'buildah tag {self.repo} {tags}')
