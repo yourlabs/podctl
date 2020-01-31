@@ -8,7 +8,7 @@ from podctl import *
 
 podctl = Container(
     Base('quay.io/podman/stable'),
-    Packages('python38', 'buildah', 'unzip', mgr='dnf'),
+    Packages('python38', 'buildah', 'unzip', 'find', mgr='dnf'),
     Run('''
     curl -o setuptools.zip https://files.pythonhosted.org/packages/42/3e/2464120172859e5d103e5500315fb5555b1e908c0dacc73d80d35a9480ca/setuptools-45.1.0.zip
     unzip setuptools.zip
