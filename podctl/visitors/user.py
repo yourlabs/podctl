@@ -25,10 +25,10 @@ class User:
     def build(self, script):
         script.append(f'''
             if {script._run('id ' + str(self.uid))}; then
-                i=$({script._run('id -n ' + str(self.uid))})
-                {script._run('usermod --home-dir ' + self.home + ' --no-log-init ' + str(self.uid) + ' $i')}
+                i=$({script._run('id -gn ' + str(self.uid))})
+                {script._run('usermod -d ' + self.home + ' -l ' + self.username + ' $i')}
             else
-                {script._run('useradd --home-dir ' + self.home + ' --uid ' + str(self.uid) + ' ' + self.username)}
+                {script._run('useradd -d ' + self.home + ' -u ' + str(self.uid) + ' ' + self.username)}
             fi
         ''')  # noqa
         self.user_created = True

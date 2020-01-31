@@ -33,10 +33,10 @@ buildah run --user root $ctr -- apk upgrade
 buildah run --user root $ctr -- apk add shadow
 echo "User.build"
 if buildah run $ctr -- id 1000; then
-    i=$(buildah run $ctr -- id -n 1000)
-    buildah run $ctr -- usermod --home-dir /app --no-log-init 1000 $i
+    i=$(buildah run $ctr -- id -gn 1000)
+    buildah run $ctr -- usermod -d /app -l app $i
 else
-    buildah run $ctr -- useradd --home-dir /app --uid 1000 app
+    buildah run $ctr -- useradd -d /app -u 1000 app
 fi
 echo "User.post_build"
 buildah config --user app $ctr
