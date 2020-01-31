@@ -17,7 +17,7 @@ class Commit:
     def __init__(self, repo, tags=None, format=None, push=None, registry=None):
         self.repo = repo
         self.registry = registry
-        self.push = push
+        self.push = push or os.getenv('CI')
 
         # figure out registry host
         if '/' in self.repo and not registry:
@@ -56,3 +56,7 @@ class Commit:
 
         if self.tags:
             script.append(f'buildah tag {self.repo} ' + ' '.join(self.tags))
+
+            if self.push:
+                for tag in self.tags:
+                    script.append(f'podman push {self.repo}:{tag}')
