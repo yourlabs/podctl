@@ -3,4 +3,8 @@ class Npm:
         self.npm_install = install
 
     def build(self, script):
-        script.append(f'cd {self.npm_install} && npm install')
+        script.run('sudo npm update -g npm')
+        script.run(f'''
+        cd {self.npm_install}
+        npm install
+        ''')
