@@ -16,4 +16,4 @@ mnt=$(buildah mount $ctr)
 echo "Copy.init_build"
 echo "Copy.build"
 buildah run --user root $ctr -- mkdir -p /app
-cp -a /home/jpic/src/podctl/tests $mnt/app
+cp -a /test $mnt/app

@@ -70,7 +70,7 @@ def test_build_copy():
     script_test(
         'build_copy',
         Base('alpine'),
-        Copy(os.path.dirname(__file__), '/app'),
+        Copy('/test', '/app'),
     )
 
 
