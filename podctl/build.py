@@ -1,3 +1,5 @@
+import textwrap
+
 from .script import Script
 
 
@@ -31,11 +33,18 @@ class BuildScript(Script):
 
     def _run(self, cmd, inject=False):
         user = self.container.variable('username')
-        _cmd = cmd
+        _cmd = textwrap.dedent(cmd)
         if cmd.startswith('sudo '):
             _cmd = _cmd[5:]
 
-        _cmd = ' '.join(['bash -eux <<__EOF\n', _cmd.strip(), '\n__EOF'])
+        heredoc = False
+        for i in ('\n', '>', '<', '|', '&'):
+            if i in _cmd:
+                heredoc = True
+                break
+
+        if heredoc:
+            _cmd = ' '.join(['bash -eux <<__EOF\n', _cmd.strip(), '\n__EOF'])
 
         if cmd.startswith('sudo '):
             return f'buildah run --user root $ctr -- {_cmd}'
