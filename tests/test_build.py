@@ -8,6 +8,7 @@ from podctl.visitors import (
     Base,
     Copy,
     Packages,
+    Run,
     User,
 )
 
@@ -77,13 +78,14 @@ def test_build_copy():
     )
 
 
-'''
-
-def test_build_files():
-    result = str(BuildScript(Container(
-        base='alpine',
-        files=[
-            Directory('/app', '0500').add('setup.py', 'podctl'),
-        ]
-    )))
-    '''
+def test_build_run():
+    script_test(
+        'build_run',
+        Base('alpine'),
+        Run('foo'),
+        Run('sudo bar'),
+        Run('sudo bar > test'),
+        Run('''
+        bar
+        '''),
+    )
