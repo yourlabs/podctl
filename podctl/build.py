@@ -35,9 +35,7 @@ class BuildScript(Script):
         if cmd.startswith('sudo '):
             _cmd = _cmd[5:]
 
-        if '\n' in _cmd.strip():
-            # 1337: multiline supports, kindof breaks sudo but really fixes cd
-            _cmd = ' '.join(['bash -eux <<__EOF\n', _cmd, '\n__EOF'])
+        _cmd = ' '.join(['bash -eux <<__EOF\n', _cmd.strip(), '\n__EOF'])
 
         if cmd.startswith('sudo '):
             return f'buildah run --user root $ctr -- {_cmd}'
