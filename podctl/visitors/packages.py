@@ -69,6 +69,7 @@ class Packages:
             script.mount(cache, f'/var/cache/{self.mgr}')
             script.run('sh -c "echo keepcache=True >> /etc/dnf/dnf.conf"')
         elif self.mgr == 'apt':
+            cache = cache + '/$(source $mnt/etc/os-release; echo $VERSION_CODENAME)/'  # noqa
             script.run('sudo rm /etc/apt/apt.conf.d/docker-clean')
             cache_archives = os.path.join(cache, 'archives')
             script.mount(cache_archives, f'/var/cache/apt/archives')
