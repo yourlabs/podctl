@@ -43,12 +43,6 @@ class Commit:
         self.tags = [t for t in self.tags if t is not None]
 
     def post_build(self, script):
-        user = os.getenv('DOCKER_USER')
-        passwd = os.getenv('DOCKER_PASS')
-        if user and passwd and os.getenv('CI') and self.registry:
-            subprocess.check_call([
-                'podman', 'login', '-u', user, '-p', passwd, self.registry])
-
         script.append(f'''
             umounts
             buildah commit --format={self.format} $ctr {self.repo}
@@ -58,5 +52,14 @@ class Commit:
             script.append(f'buildah tag {self.repo} ' + ' '.join(self.tags))
 
             if self.push:
+                user = os.getenv('DOCKER_USER')
+                passwd = os.getenv('DOCKER_PASS')
+                if user and passwd and os.getenv('CI') and self.registry:
+                    subprocess.check_call([
+                        'podman', 'login',
+                        '-u', user, '-p', passwd,
+                        self.registry
+                    ])
+
                 for tag in self.tags:
                     script.append(f'podman push {self.repo}:{tag}')

@@ -17,6 +17,7 @@ from podctl.visitors import packages
 packages.subprocess.check_call = mock.Mock()
 
 os.environ['CACHE_DIR'] = '/test'
+os.environ['CI'] = '1'
 
 
 def script_test(name, *visitors):
