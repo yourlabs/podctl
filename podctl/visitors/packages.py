@@ -12,7 +12,7 @@ class Packages:
         apt=dict(
             update='sudo apt-get -y update',
             upgrade='sudo apt-get -y upgrade',
-            install='sudo apt-get -y install',
+            install='sudo apt-get -y --no-install-recommends install',
         ),
         dnf=dict(
             update='sudo dnf update',
