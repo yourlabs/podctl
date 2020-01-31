@@ -49,7 +49,8 @@ class Commit:
         ''')
 
         if self.tags:
-            script.append(f'buildah tag {self.repo} ' + ' '.join(self.tags))
+            tags = ' '.join([f'{self.repo}:{tag}' for tag in self.tags])
+            script.append(f'buildah tag {self.repo} {tags}')
 
             if self.push:
                 user = os.getenv('DOCKER_USER')
