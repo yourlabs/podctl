@@ -30,6 +30,8 @@ def script_test(name, *visitors):
         with open(path, 'w+') as f:
             f.write(result)
         raise Exception(f'Fixture created test_{name}.sh')
+    elif os.getenv('TEST_REWRITE') and os.path.exists(path):
+        os.unlink(path)
     with open(path, 'r') as f:
         expected = f.read()
     result = difflib.unified_diff(
