@@ -10,17 +10,23 @@ class Visitable:
             k: v(self) for k, v in self.default_scripts.items()
         }
 
-    def script(self, name):
+    async def script(self, name, loop):
         script = copy(self.scripts[name])
+        script.loop = loop
+        results = []
 
         for prefix in ('init_', 'pre_', '', 'post_'):
             method = prefix + name
             for visitor in self.visitors:
-                if hasattr(visitor, method):
-                    script.append(f'echo "{type(visitor).__name__}.{method}"')
-                    getattr(visitor, method)(script)
+                if not hasattr(visitor, method):
+                    continue
 
-        return script
+                rep = {k: v if not isinstance(v, object) else type(v).__name__ for k, v in visitor.__dict__.items()}
+                print(self.name + ' | ', type(visitor).__name__, method, rep)
+                result = getattr(visitor, method)(script)
+                if result:
+                    await result
+
 
     def visitor(self, name):
         for visitor in self.visitors:

@@ -1,36 +1,71 @@
 import asyncio
 import os
+import asyncio
+import signal
 import subprocess
 import textwrap
 
 from .script import Script
 
 
+class WrongResult(Exception):
+    pass
+
+
 class Build(Script):
     def __init__(self, container):
         super().__init__()
         self.container = container
+        self.log = []
+        self.mounts = dict()
 
-    def append(self, value):
-        res = []
+    async def cmd(self, line):
+        log = dict(cmd=line)
+        self.log.append(log)
+        line = self.unshare(line)
+        print(self.container.name + ' | ' + line)
+        def protocol_factory():
+            from .console_script import BuildStreamProtocol
+            return BuildStreamProtocol(
+                self.container,
+                limit=asyncio.streams._DEFAULT_LIMIT,
+                loop=self.loop,
+            )
+        transport, protocol = await self.loop.subprocess_shell(
+            protocol_factory,
+            line,
+        )
+        proc = asyncio.subprocess.Process(
+            transport,
+            protocol,
+            self.loop,
+        )
+        result = await proc.wait()
+        if result:
+            raise WrongResult(proc)
+        return proc
+        '''
+        proc = await asyncio.create_subprocess_shell(
+            line,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        '''
+
+    async def append(self, value):
         for line in value.split('\n'):
             if line.startswith('#') or not line.strip():
                 continue
-            res.append(self.unshare(line))
-        return '\n'.join(res)
+            log = dict(proc=await self.cmd(line))
+            log['stdout'], log['stderr'] = await log['proc'].communicate()
 
-    async def unshare(self, line):
-        print('+ buildah unshare ' + line)
-        proc = await asyncio.create_subprocess_shell(
-            'buildah unshare ' + line,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        ).decode('utf8')
-        stdout, stderr = await proc.communicate()
-        return stdout
+        return log['stdout']
 
-    def config(self, line):
-        self.append(f'buildah config {line} {self.ctr}')
+    def unshare(self, line):
+        return 'buildah unshare ' + line
+
+    async def config(self, line):
+        return await self.append(f'buildah config {line} {self.ctr}')
 
     def _run(self, cmd, inject=False):
         user = self.container.variable('username')
@@ -54,20 +89,25 @@ class Build(Script):
         else:
             return f'buildah run {self.ctr} -- {_cmd}'
 
-    def run(self, cmd):
-        self.append(self._run(cmd))
+    async def run(self, cmd):
+        return await self.append(self._run(cmd))
 
-    def copy(self, src, dst):
-        self.append(f'buildah copy {self.ctr} {src} {dst}')
+    async def copy(self, src, dst):
+        return await self.append(f'buildah copy {self.ctr} {src} {dst}')
 
-    def mount(self, src, dst):
-        self.run('sudo mkdir -p ' + dst)
-        self.append('mkdir -p ' + src)
-        self.append(f'mount -o bind {src} {self.mnt}{dst}')
-        #self.append('mounts=("$mnt' + dst + '" "${mounts[@]}")')
-        self.mounts.append((src, dst))
+    async def mount(self, src, dst):
+        await self.run('sudo mkdir -p ' + dst)
+        await self.append('mkdir -p ' + src)
+        await self.append(f'mount -o bind {src} {self.mnt}{dst}')
+        #await self.append('mounts=("$mnt' + dst + '" "${mounts[@]}")')
+        self.mounts[dst] = src
 
-    def umounts(self):
+    async def umounts(self):
         for src, dst in self.mounts:
-            self.append('buildah unmount ' + dst)
-        self.append('buildah unmount ' + self.ctr)
+            await self.append('buildah unmount ' + dst)
+        await self.append('buildah unmount ' + self.ctr)
+
+    def which(self, cmd):
+        for path in self.container.paths:
+            if os.path.exists(os.path.join(path, cmd)):
+                return True

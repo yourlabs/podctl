@@ -42,24 +42,14 @@ async def build(*services, **kwargs):
     else:
         services = console_script.pod.services
 
+    a = []
     loop = asyncio.events.get_event_loop()
-    debug = console_script.parser.options.get('debug', False)
-    def protocol_factory():
-        return BuildStreamProtocol(
-            service,
-            limit=asyncio.streams._DEFAULT_LIMIT,
-            loop=loop,
-        )
-
     for name, service in services.items():
-        container = service.container
-        if not container.variable('base'):
-            continue
-        await container.build(loop, protocol_factory)
+        service.container.name = name
+        a.append(service.container.script('build', loop))
 
-    for proc in procs:
-        if proc.returncode != 0:
-            sys.exit(proc.returncode)
+    result = await asyncio.gather(*a, return_exceptions=False)
+    print(result)
 
 
 class ConsoleScript(cli2.ConsoleScript):

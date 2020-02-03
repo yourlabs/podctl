@@ -37,7 +37,7 @@ class Packages:
         else:
             self.cache = os.path.join(os.getenv('HOME'), '.cache', self.mgr)
 
-    def pre_build(self, script):
+    async def pre_build(self, script):
         base = script.container.variable('base')
         if self.mgr:
             self.cmds = self.mgrs[self.mgr]
@@ -54,23 +54,23 @@ class Packages:
         if not self.mgr:
             raise Exception('Packages does not yet support this distro')
 
-    def build(self, script):
+    async def build(self, script):
         if not getattr(script.container, '_packages_upgraded', None):
             # run pkgmgr_setup functions ie. apk_setup
-            getattr(self, self.mgr + '_setup')(script)
+            await getattr(self, self.mgr + '_setup')(script)
             # first run on container means inject visitor packages
             self.packages += script.container.packages
-            script.run(self.cmds['upgrade'])
+            await script.run(self.cmds['upgrade'])
             script.container._packages_upgraded = True
 
-        script.run(' '.join([self.cmds['install']] + self.packages))
+        await script.run(' '.join([self.cmds['install']] + self.packages))
 
-    def apk_setup(self, script):
-        script.mount(self.cache, f'/var/cache/{self.mgr}')
+    async def apk_setup(self, script):
+        await script.mount(self.cache, f'/var/cache/{self.mgr}')
         # special step to enable apk cache
-        script.run('ln -s /var/cache/apk /etc/apk/cache')
-        script.append(f'''
-        old="$(find .cache/apk/ -name APKINDEX.* -mtime +3)"
+        await script.run('ln -s /var/cache/apk /etc/apk/cache')
+        await script.append(f'''
+        old="$(find {self.cache} -name APKINDEX.* -mtime +3)"
         if [ -n "$old" ] || ! ls .cache/apk/APKINDEX.*; then
             {script._run(self.cmds['update'])}
         else
@@ -78,18 +78,18 @@ class Packages:
         fi
         ''')
 
-    def dnf_setup(self, script):
-        script.mount(self.cache, f'/var/cache/{self.mgr}')
-        script.run('sh -c "echo keepcache=True >> /etc/dnf/dnf.conf"')
+    async def dnf_setup(self, script):
+        await script.mount(self.cache, f'/var/cache/{self.mgr}')
+        await script.run('sh -c "echo keepcache=True >> /etc/dnf/dnf.conf"')
 
-    def apt_setup(self, script):
+    async def apt_setup(self, script):
         cache = self.cache + '/$(source $mnt/etc/os-release; echo $VERSION_CODENAME)/'  # noqa
-        script.run('sudo rm /etc/apt/apt.conf.d/docker-clean')
+        await script.run('sudo rm /etc/apt/apt.conf.d/docker-clean')
         cache_archives = os.path.join(self.cache, 'archives')
-        script.mount(cache_archives, f'/var/cache/apt/archives')
+        await script.mount(cache_archives, f'/var/cache/apt/archives')
         cache_lists = os.path.join(self.cache, 'lists')
-        script.mount(cache_lists, f'/var/lib/apt/lists')
-        script.append(f'''
+        await script.mount(cache_lists, f'/var/lib/apt/lists')
+        await script.append(f'''
         old="$(find {cache_lists} -name lastup -mtime +3)"
         if [ -n "$old" ] || ! ls {cache_lists}/lastup; then
             until [ -z $(lsof /var/lib/dpkg/lock) ]; do sleep 1; done

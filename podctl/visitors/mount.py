@@ -3,5 +3,5 @@ class Mount:
         self.src = src
         self.dst = dst
 
-    def build(self, script):
-        script.mount(self.src, self.dst)
+    async def build(self, script):
+        await script.mount(self.src, self.dst)

@@ -11,10 +11,10 @@ class Template:
         self.lines = lines
         self.variables = variables
 
-    def build(self, script):
+    async def build(self, script):
         self.script = '\n'.join([
             dedent(l).strip() for l in self.lines
         ]).format(**self.variables)
-        script.run(CMD.strip().format(**self.__dict__))
+        await script.run(CMD.strip().format(**self.__dict__))
         if self.script.startswith('#!'):
-            script.run('sudo chmod +x ' + self.target)
+            await script.run('sudo chmod +x ' + self.target)

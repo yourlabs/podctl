@@ -42,8 +42,8 @@ class Commit:
         # filter out tags which resolved to None
         self.tags = [t for t in self.tags if t is not None]
 
-    def post_build(self, script):
-        script.append(f'''
+    async def post_build(self, script):
+        await script.append(f'''
             umounts
             buildah commit --format={self.format} $ctr {self.repo}
         ''')
@@ -53,7 +53,7 @@ class Commit:
 
         if self.tags:
             tags = ' '.join([f'{self.repo}:{tag}' for tag in self.tags])
-            script.append(f'buildah tag {self.repo} {tags}')
+            await script.append(f'buildah tag {self.repo} {tags}')
 
             if self.push:
                 user = os.getenv('DOCKER_USER')
@@ -66,4 +66,4 @@ class Commit:
                     ])
 
                 for tag in self.tags:
-                    script.append(f'podman push {self.repo}:{tag}')
+                    await script.append(f'podman push {self.repo}:{tag}')
