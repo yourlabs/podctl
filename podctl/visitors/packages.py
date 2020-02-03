@@ -1,5 +1,6 @@
 import os
 import subprocess
+from textwrap import dedent
 
 
 class Packages:
@@ -27,8 +28,14 @@ class Packages:
     )
 
     def __init__(self, *packages, **kwargs):
-        self.packages = list(packages)
+        self.packages = list([
+            dedent(l).strip().replace('\n', ' ') for l in packages
+        ])
         self.mgr = kwargs.pop('mgr') if 'mgr' in kwargs else None
+        if 'CACHE_DIR' in os.environ:
+            self.cache = os.path.join(os.getenv('CACHE_DIR'), self.mgr)
+        else:
+            self.cache = os.path.join(os.getenv('HOME'), '.cache', self.mgr)
 
     def pre_build(self, script):
         base = script.container.variable('base')
@@ -48,41 +55,47 @@ class Packages:
             raise Exception('Packages does not yet support this distro')
 
     def build(self, script):
-        if 'CACHE_DIR' in os.environ:
-            cache = os.path.join(os.getenv('CACHE_DIR'), self.mgr)
-        else:
-            cache = os.path.join(os.getenv('HOME'), '.cache', self.mgr)
+        if not getattr(script.container, '_packages_upgraded', None):
+            # run pkgmgr_setup functions ie. apk_setup
+            getattr(self, self.mgr + '_setup')(script)
+            # first run on container means inject visitor packages
+            self.packages += script.container.packages
+            script.run(self.cmds['upgrade'])
+            script.container._packages_upgraded = True
 
-        if self.mgr == 'apk':
-            script.mount(cache, f'/var/cache/{self.mgr}')
-            # special step to enable apk cache
-            script.run('ln -s /var/cache/apk /etc/apk/cache')
-            script.append(f'''
-            old="$(find .cache/apk/ -name APKINDEX.* -mtime +3)"
-            if [ -n "$old" ] || ! ls .cache/apk/APKINDEX.*; then
-                {script._run(self.cmds['update'])}
-            else
-                echo Cache recent enough, skipping index update.
-            fi
-            ''')
-        elif self.mgr == 'dnf':
-            script.mount(cache, f'/var/cache/{self.mgr}')
-            script.run('sh -c "echo keepcache=True >> /etc/dnf/dnf.conf"')
-        elif self.mgr == 'apt':
-            cache = cache + '/$(source $mnt/etc/os-release; echo $VERSION_CODENAME)/'  # noqa
-            script.run('sudo rm /etc/apt/apt.conf.d/docker-clean')
-            cache_archives = os.path.join(cache, 'archives')
-            script.mount(cache_archives, f'/var/cache/apt/archives')
-            cache_lists = os.path.join(cache, 'lists')
-            script.mount(cache_lists, f'/var/lib/apt/lists')
-            script.append(f'''
-            old="$(find {cache_lists} -name lastup -mtime +3)"
-            if [ -n "$old" ] || ! ls {cache_lists}/lastup; then
-                {script._run(self.cmds['update'])}
-                touch {cache_lists}/lastup
-            else
-                echo Cache recent enough, skipping index update.
-            fi
-            ''')
-        script.run(self.cmds['upgrade'])
         script.run(' '.join([self.cmds['install']] + self.packages))
+
+    def apk_setup(self, script):
+        script.mount(self.cache, f'/var/cache/{self.mgr}')
+        # special step to enable apk cache
+        script.run('ln -s /var/cache/apk /etc/apk/cache')
+        script.append(f'''
+        old="$(find .cache/apk/ -name APKINDEX.* -mtime +3)"
+        if [ -n "$old" ] || ! ls .cache/apk/APKINDEX.*; then
+            {script._run(self.cmds['update'])}
+        else
+            echo Cache recent enough, skipping index update.
+        fi
+        ''')
+
+    def dnf_setup(self, script):
+        script.mount(self.cache, f'/var/cache/{self.mgr}')
+        script.run('sh -c "echo keepcache=True >> /etc/dnf/dnf.conf"')
+
+    def apt_setup(self, script):
+        cache = self.cache + '/$(source $mnt/etc/os-release; echo $VERSION_CODENAME)/'  # noqa
+        script.run('sudo rm /etc/apt/apt.conf.d/docker-clean')
+        cache_archives = os.path.join(self.cache, 'archives')
+        script.mount(cache_archives, f'/var/cache/apt/archives')
+        cache_lists = os.path.join(self.cache, 'lists')
+        script.mount(cache_lists, f'/var/lib/apt/lists')
+        script.append(f'''
+        old="$(find {cache_lists} -name lastup -mtime +3)"
+        if [ -n "$old" ] || ! ls {cache_lists}/lastup; then
+            until [ -z $(lsof /var/lib/dpkg/lock) ]; do sleep 1; done
+            {script._run(self.cmds['update'])}
+            touch {cache_lists}/lastup
+        else
+            echo Cache recent enough, skipping index update.
+        fi
+        ''')
