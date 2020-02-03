@@ -1,35 +1,36 @@
+import asyncio
+import os
+import subprocess
 import textwrap
 
 from .script import Script
 
 
-class BuildScript(Script):
-    export = ('base', 'repo')
-
+class Build(Script):
     def __init__(self, container):
         super().__init__()
         self.container = container
 
-        for var in self.export:
-            self.append(f'{var}="{container.variable(var)}"')
+    def append(self, value):
+        res = []
+        for line in value.split('\n'):
+            if line.startswith('#') or not line.strip():
+                continue
+            res.append(self.unshare(line))
+        return '\n'.join(res)
 
-        self.append('''
-            mounts=()
-            umounts() {
-                for i in "${mounts[@]}"; do
-                    umount $i
-                    mounts=("${mounts[@]/$i}")
-                done
-                buildah unmount $ctr
-                trap - 0
-            }
-            trap umounts 0
-            ctr=$(buildah from $base)
-            mnt=$(buildah mount $ctr)
-        ''')
+    async def unshare(self, line):
+        print('+ buildah unshare ' + line)
+        proc = await asyncio.create_subprocess_shell(
+            'buildah unshare ' + line,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        ).decode('utf8')
+        stdout, stderr = await proc.communicate()
+        return stdout
 
     def config(self, line):
-        self.append(f'buildah config {line} $ctr')
+        self.append(f'buildah config {line} {self.ctr}')
 
     def _run(self, cmd, inject=False):
         user = self.container.variable('username')
@@ -44,23 +45,29 @@ class BuildScript(Script):
                 break
 
         if heredoc:
-            _cmd = ' '.join(['bash -eux <<__EOF\n', _cmd.strip(), '\n__EOF'])
+            _cmd = ''.join(['bash -eux <<__EOF\n', _cmd.strip(), '\n__EOF'])
 
         if cmd.startswith('sudo '):
-            return f'buildah run --user root $ctr -- {_cmd}'
+            return f'buildah run --user root {self.ctr} -- {_cmd}'
         elif user and self.container.variable('user_created'):
-            return f'buildah run --user {user} $ctr -- {_cmd}'
+            return f'buildah run --user {user} {self.ctr} -- {_cmd}'
         else:
-            return f'buildah run $ctr -- {_cmd}'
+            return f'buildah run {self.ctr} -- {_cmd}'
 
     def run(self, cmd):
         self.append(self._run(cmd))
 
     def copy(self, src, dst):
-        self.append(f'buildah copy $ctr {src} {dst}')
+        self.append(f'buildah copy {self.ctr} {src} {dst}')
 
     def mount(self, src, dst):
         self.run('sudo mkdir -p ' + dst)
         self.append('mkdir -p ' + src)
-        self.append(f'mount -o bind {src} $mnt{dst}')
-        self.append('mounts=("$mnt' + dst + '" "${mounts[@]}")')
+        self.append(f'mount -o bind {src} {self.mnt}{dst}')
+        #self.append('mounts=("$mnt' + dst + '" "${mounts[@]}")')
+        self.mounts.append((src, dst))
+
+    def umounts(self):
+        for src, dst in self.mounts:
+            self.append('buildah unmount ' + dst)
+        self.append('buildah unmount ' + self.ctr)

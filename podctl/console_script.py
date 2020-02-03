@@ -42,42 +42,20 @@ async def build(*services, **kwargs):
     else:
         services = console_script.pod.services
 
+    loop = asyncio.events.get_event_loop()
+    debug = console_script.parser.options.get('debug', False)
+    def protocol_factory():
+        return BuildStreamProtocol(
+            service,
+            limit=asyncio.streams._DEFAULT_LIMIT,
+            loop=loop,
+        )
+
     for name, service in services.items():
         container = service.container
         if not container.variable('base'):
             continue
-
-        script = f'.podctl_build_{name}.sh'
-        with open(script, 'w+') as f:
-            f.write(str(container.script('build')))
-
-        loop = asyncio.events.get_event_loop()
-
-        def protocol_factory():
-            return BuildStreamProtocol(
-                service,
-                limit=asyncio.streams._DEFAULT_LIMIT,
-                loop=loop,
-            )
-
-        if os.getenv('BUILDAH_ISOLATION') == 'chroot':
-            prefix = ''
-        else:
-            prefix = 'buildah unshare '
-        x = 'x' if console_script.parser.options.get('debug', False) else ''
-        transport, protocol = await loop.subprocess_shell(
-            protocol_factory,
-            prefix + f'bash -eu{x} {script}',
-        )
-        print('+ ' + prefix + f' bash -eux {script}')
-        procs.append(asyncio.subprocess.Process(
-            transport,
-            protocol,
-            loop,
-        ))
-
-    for proc in procs:
-        await proc.communicate()
+        await container.build(loop, protocol_factory)
 
     for proc in procs:
         if proc.returncode != 0:
