@@ -3,7 +3,7 @@ import os
 import sys
 
 from podctl.container import Container
-from podctl.build import BuildScript
+from podctl.build import Build
 from podctl.visitors import (
     Base,
     Copy,

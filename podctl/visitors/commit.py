@@ -43,27 +43,34 @@ class Commit:
         self.tags = [t for t in self.tags if t is not None]
 
     async def post_build(self, script):
-        await script.append(f'''
-            umounts
-            buildah commit --format={self.format} $ctr {self.repo}
-        ''')
+        await script.exec(
+            'buildah',
+            'commit',
+            '--format=' + self.format,
+            script.ctr,
+        )
 
         if 'master' in self.tags:
             self.tags.append('latest')
 
         if self.tags:
             tags = ' '.join([f'{self.repo}:{tag}' for tag in self.tags])
-            await script.append(f'buildah tag {self.repo} {tags}')
+            await script.run('buildah', 'tag', self.repo, ' '.join(tags))
 
             if self.push:
                 user = os.getenv('DOCKER_USER')
                 passwd = os.getenv('DOCKER_PASS')
                 if user and passwd and os.getenv('CI') and self.registry:
-                    subprocess.check_call([
-                        'podman', 'login',
-                        '-u', user, '-p', passwd,
-                        self.registry
-                    ])
+                    await script.exec(
+                        'podman',
+                        'login',
+                        '-u',
+                        user,
+                        '-p',
+                        passwd,
+                        self.registry,
+                    )
 
                 for tag in self.tags:
-                    await script.append(f'podman push {self.repo}:{tag}')
+                    await script.run('podman', 'push', f'{self.repo}:{tag}')
+        await script.umount()

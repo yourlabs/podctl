@@ -10,29 +10,20 @@ import sys
 
 from .container import Container
 from .pod import Pod
+from .proc import WrongResult
 from .service import Service
 
 
-class BuildStreamProtocol(asyncio.subprocess.SubprocessStreamProtocol):
-    def __init__(self, service, *args, **kwargs):
-        self.service = service
-        super().__init__(*args, **kwargs)
-
-    def pipe_data_received(self, fd, data):
-        if fd in (1, 2):
-            for line in data.split(b'\n'):
-                if not line:
-                    continue
-                sys.stdout.buffer.write(
-                    self.service.name.encode('utf8') + b' | ' + line + b'\n'
-                )
-            sys.stdout.flush()
-        super().pipe_data_received(fd, data)
-
-
 @cli2.option('debug', help='Print debug output', color=cli2.GREEN, alias='d')
-async def build(*services, **kwargs):
-    procs = []
+async def build(*services_or_flags, **kwargs):
+    flags = []
+    services = []
+    for arg in services_or_flags:
+        if arg.startswith('-') or arg.startswith('+'):
+            flags.append(arg)
+        else:
+            services.append(arg)
+
     if services:
         services = {
             k: v
@@ -42,14 +33,17 @@ async def build(*services, **kwargs):
     else:
         services = console_script.pod.services
 
-    a = []
-    loop = asyncio.events.get_event_loop()
+    procs = []
+    asyncio.events.get_event_loop()
     for name, service in services.items():
         service.container.name = name
-        a.append(service.container.script('build', loop))
+        service.container.flags = flags
+        procs.append(service.container.script('build', flags))
 
-    result = await asyncio.gather(*a, return_exceptions=False)
-    print(result)
+    try:
+        result = await asyncio.gather(*procs)
+    except WrongResult:
+        sys.exit(1)
 
 
 class ConsoleScript(cli2.ConsoleScript):

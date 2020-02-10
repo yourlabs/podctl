@@ -15,7 +15,14 @@ class Visitable:
         script.loop = loop
         results = []
 
-        for prefix in ('init_', 'pre_', '', 'post_'):
+        async def clean():
+            for visitor in self.visitors:
+                if hasattr(visitor, 'clean_' + name):
+                    result = getattr(visitor, 'clean_' + name)(self)
+                    if result:
+                        await result
+
+        for prefix in ('init_', 'pre_', '', 'post_', 'clean_'):
             method = prefix + name
             for visitor in self.visitors:
                 if not hasattr(visitor, method):
@@ -25,8 +32,11 @@ class Visitable:
                 print(self.name + ' | ', type(visitor).__name__, method, rep)
                 result = getattr(visitor, method)(script)
                 if result:
-                    await result
-
+                    try:
+                        await result
+                    except Exception as e:
+                        await clean()
+                        raise
 
     def visitor(self, name):
         for visitor in self.visitors:

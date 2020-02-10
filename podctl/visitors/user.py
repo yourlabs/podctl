@@ -14,7 +14,7 @@ class User:
         self.user_created = False
 
     async def build(self, script):
-        await script.append(f'''
+        await script.run(f'''
             if {script._run('id ' + str(self.uid))}; then
                 i=$({script._run('id -gn ' + str(self.uid))})
                 {script._run('usermod -d ' + self.home + ' -l ' + self.username + ' $i')}
