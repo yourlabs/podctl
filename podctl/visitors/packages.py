@@ -150,3 +150,6 @@ class Packages:
         cache_lists = os.path.join(cachedir, 'lists')
         await script.mount(cache_lists, f'/var/lib/apt/lists')
         return cachedir
+
+    def __repr__(self):
+        return f'Packages({self.packages})'

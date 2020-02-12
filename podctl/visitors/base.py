@@ -13,3 +13,6 @@ class Base:
         await script.umounts()
         await script.umount()
         proc = await script.exec('buildah', 'rm', script.ctr, raises=False)
+
+    def __repr__(self):
+        return f'Base({self.base})'

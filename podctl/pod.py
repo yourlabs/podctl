@@ -1,46 +1,43 @@
-import asyncio
-import copy
 import os
 
 from .build import Build
 from .container import Container
-from .exceptions import WrongResult
-from .script import Script
+from .scripts import *
 from .visitable import Visitable
-
-
-class Up(Script):
-    async def run(self, *args, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-        pod = kwargs.get('pod')
-
-        try:
-            pod.info = (await self.exec(
-                'podman', 'pod', 'inspect', pod.name
-            )).json
-            print(f'Pod {pod.name} ready')
-        except WrongResult:
-            print(f'Pod {pod.name} creating')
-            await self.exec(
-                'podman', 'pod', 'create', '--name', self.pod.name,
-            )
-            print(f'Pod {pod.name} created')
-            pod.info = (await self.exec(
-                'podman', 'pod', 'inspect', pod.name
-            )).json
-
-        return await super().run(*args, **kwargs)
 
 
 class Pod(Visitable):
     default_scripts = dict(
         build=Build(),
-        run=Script('run', 'Run a container command'),
         up=Up('up', 'Start the stack'),
-        test=Script('test', 'Run tests inside containers'),
+        down=Down('down', 'Destroy the stack'),
+        run=Run('run', 'Run a command in container(s)'),
+        name=Name(
+            'name',
+            'Output the pod name for usage with podman',
+        ),
     )
+
+    async def down(self, script):
+        try:
+            await script.exec('podman', 'pod', 'inspect', self.name)
+        except WrongResult:
+            pass
+        else:
+            await script.exec('podman', 'pod', 'rm', self.name)
+
+    async def up(self, script):
+        try:
+            await script.exec(
+                'podman', 'pod', 'inspect', self.name
+            )
+            print(f'{self.name} | Pod ready')
+        except WrongResult:
+            print(f'{self.name} | Pod creating')
+            await script.exec(
+                'podman', 'pod', 'create', '--name', self.name,
+            )
+            print(f'{self.name} | Pod created')
 
     @property
     def name(self):
@@ -53,7 +50,9 @@ class Pod(Visitable):
     def script(self, name):
         async def cb(*args, **kwargs):
             asyncio.events.get_event_loop()
-            script = copy.deepcopy(self.scripts[name])
             kwargs['pod'] = self
-            return await script.run(*args, **kwargs)
+            return await self.scripts[name].run(*args, **kwargs)
         return cb
+
+    def __repr__(self):
+        return self.name

@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import cli2
 import textwrap
 
@@ -11,10 +12,11 @@ class Script:
             'debug',
             alias='d',
             color=cli2.GREEN,
+            default='visit',
             help='''
-            Display debug output.
-            Supports values: proc,out,visit
-            '''
+            Display debug output. Supports values (combinable): cmd,out,visit
+            '''.strip(),
+            immediate=True,
         ),
     ]
 
@@ -24,7 +26,7 @@ class Script:
 
     async def exec(self, *args, **kwargs):
         """Execute a command on the host."""
-        if getattr(self, 'container', None):
+        if getattr(self, 'container', None) and getattr(self.container, 'name', None):
             kwargs.setdefault('prefix', self.container.name)
         proc = await Proc(*args, **kwargs)()
         if kwargs.get('wait', True):
@@ -33,8 +35,9 @@ class Script:
 
     async def __call__(self, visitable, *args, **kwargs):
         from .console_script import console_script
-        debug = console_script.parser.options.get('debug', False)
+        debug = console_script.options.get('debug', False)
 
+        self.args = args
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -44,7 +47,14 @@ class Script:
         async def clean():
             for visitor in visitable.visitors:
                 if hasattr(visitor, 'clean_' + self.name):
-                    result = getattr(visitor, 'clean_' + self.name)(self)
+                    method = 'clean_' + self.name
+                    result = getattr(visitor, method)(self)
+                    if debug is True or 'visit' in str(debug):
+                        print(
+                            getattr(visitable, 'name', '') + ' | ',
+                            '.'.join([type(visitor).__name__, method]),
+                            ' '.join(f'{k}={v}' for k, v in visitor.__dict__.items())
+                        )
                     if result:
                         await result
 
@@ -56,7 +66,7 @@ class Script:
 
                 if debug is True or 'visit' in str(debug):
                     print(
-                        visitable.name + ' | ',
+                        getattr(visitable, 'name', '') + ' | ',
                         '.'.join([type(visitor).__name__, method]),
                         ' '.join(f'{k}={v}' for k, v in visitor.__dict__.items())
                     )
@@ -69,20 +79,28 @@ class Script:
                         raise
 
     async def run(self, *args, **kwargs):
-        pod = kwargs.get('pod')
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
         if args:
-            containers = [c for c in pod.containers if c.name in args]
+            containers = [c for c in self.pod.containers if c.name in args]
         else:
-            containers = pod.containers
+            containers = self.pod.containers
 
-        procs = []
-        for container in containers:
-            procs.append(self(
+        procs = [
+            copy.deepcopy(self)(
+                self.pod,
+                *args,
+                **kwargs,
+            )
+        ]
+        procs += [
+            copy.deepcopy(self)(
                 container,
                 *args,
                 container=container,
                 **kwargs,
-            ))
-
+            )
+            for container in containers
+        ]
         return await asyncio.gather(*procs)

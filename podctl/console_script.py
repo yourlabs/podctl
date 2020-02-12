@@ -33,6 +33,10 @@ class ConsoleScript(cli2.ConsoleScript):
 
             self.funckwargs['cmd'] = self.forward_args
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.options = dict()
+
     def __call__(self, *args, **kwargs):
         import inspect
         from podctl.podfile import Podfile
@@ -43,18 +47,22 @@ class ConsoleScript(cli2.ConsoleScript):
             self[name] = cli2.Callable(
                 name,
                 cb,
-                options=script.options,
+                options={o.name: o for o in script.options},
+                color=getattr(script, 'color', cli2.YELLOW),
             )
         return super().__call__(*args, **kwargs)
 
     def call(self, command):
+        self.options = self.parser.options
+
         try:
             return super().call(command)
         except Mistake as e:
             print(e)
             sys.exit(1)
-        except WrongResult:
-            sys.exit(1)
+        except WrongResult as e:
+            print(e)
+            sys.exit(e.proc.rc)
 
 
 console_script = ConsoleScript(__doc__).add_module('podctl.console_script')

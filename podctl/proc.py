@@ -21,7 +21,7 @@ class PrefixStreamProtocol(asyncio.subprocess.SubprocessStreamProtocol):
 
     def pipe_data_received(self, fd, data):
         from .console_script import console_script
-        debug = console_script.parser.options.get('debug', False)
+        debug = console_script.options.get('debug', False)
 
         if (debug is True or 'out' in str(debug)) and fd in (1, 2):
             for line in data.split(b'\n'):
@@ -33,6 +33,7 @@ class PrefixStreamProtocol(asyncio.subprocess.SubprocessStreamProtocol):
                 )
             sys.stdout.flush()
         super().pipe_data_received(fd, data)
+
 
 def protocol_factory(prefix):
     def _p():
@@ -77,8 +78,8 @@ class Proc:
             raise Exception('Already called: ' + self.cmd)
 
         from .console_script import console_script
-        debug = console_script.parser.options.get('debug', False)
-        if debug is True or 'proc' in str(debug):
+        debug = console_script.options.get('debug', False)
+        if debug is True or 'cmd' in str(debug):
             if self.prefix:
                 print(f'{self.prefix} | + {self.cmd}')
             else:
@@ -109,7 +110,7 @@ class Proc:
         if not self.communicated:
             await self.communicate()
         if self.raises and self.proc.returncode:
-            raise WrongResult()
+            raise WrongResult(self)
         return self
 
     @property

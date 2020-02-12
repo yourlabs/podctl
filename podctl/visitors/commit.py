@@ -18,7 +18,7 @@ CI_VARS = (
 class Commit:
     def __init__(self, repo, tags=None, format=None, push=None, registry=None):
         self.repo = repo
-        self.registry = registry
+        self.registry = registry or 'localhost'
         self.push = push or os.getenv('CI')
 
         # figure out registry host
@@ -81,19 +81,5 @@ class Commit:
                     await script.exec('podman', 'push', f'{self.repo}:{tag}')
         await script.umount()
 
-    async def run(self, script):
-        await script.exec(
-            'podman', 'run', '-d',
-            '--name', script.container.name,
-            ':'.join((self.repo, self.tags[0])),
-        )
-
-    async def up(self, script):
-        name = '-'.join([script.pod.name, script.container.name])
-        try:
-            await script.exec('podman', 'inspect', name)
-        except WrongResult:
-            await script.exec(
-                'podman', 'run', '-d', '--name', name,
-                ':'.join((self.repo, self.tags[0])),
-            )
+    def __repr__(self):
+        return f'Commit({self.registry}/{self.repo}:{self.tags})'

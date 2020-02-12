@@ -22,11 +22,11 @@ class Build(Script):
 
     async def config(self, line):
         """Run buildah config."""
-        return await self.append(f'buildah config {line} {self.ctr}')
+        return await self.exec(f'buildah config {line} {self.ctr}')
 
     async def copy(self, src, dst):
         """Run buildah copy to copy a file from host into container."""
-        return await self.append(f'buildah copy {self.ctr} {src} {dst}')
+        return await self.exec(f'buildah copy {self.ctr} {src} {dst}')
 
     async def cexec(self, *args, user=None, **kwargs):
         """Execute a command in the container."""
@@ -75,3 +75,6 @@ class Build(Script):
                 p = os.path.join(self.mnt, path[1:], c)
                 if os.path.exists(p):
                     return p[len(str(self.mnt)):]
+
+    def __repr__(self):
+        return f'Build'

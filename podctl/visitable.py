@@ -1,5 +1,5 @@
 import asyncio
-from copy import copy
+from copy import copy, deepcopy
 
 
 class Visitable:
@@ -7,13 +7,14 @@ class Visitable:
 
     def __init__(self, *visitors, **scripts):
         self.visitors = list(visitors)
-        self.scripts = scripts or {
-            k: v for k, v in self.default_scripts.items()
-        }
+        self.scripts = deepcopy(self.default_scripts)
+        self.scripts.update(scripts)
 
+        '''
     def script(self, name):
         script = copy(self.scripts[name])
         return script
+'''
 
     def visitor(self, name):
         for visitor in self.visitors:
