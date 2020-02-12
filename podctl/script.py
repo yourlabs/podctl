@@ -4,6 +4,9 @@ from .proc import Proc
 
 
 class Script:
+    def __init__(self, name=None):
+        self.name = name or type(self).__name__.lower()
+
     async def exec(self, *args, **kwargs):
         """Execute a command on the host."""
         kwargs.setdefault('prefix', self.container.name)
@@ -12,27 +15,33 @@ class Script:
             await proc.wait()
         return proc
 
-    async def __call__(self, name, loop=None):
-        script = copy(self.scripts[name])
-        script.loop = loop or asyncio.events.get_event_loop()
-        results = []
+    async def __call__(self, visitable, *args, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
+        visitors = visitable.visitors
+
+        results = []
         async def clean():
-            for visitor in self.visitors:
-                if hasattr(visitor, 'clean_' + name):
-                    result = getattr(visitor, 'clean_' + name)(script)
+            for visitor in visitable.visitors:
+                if hasattr(visitor, 'clean_' + self.name):
+                    result = getattr(visitor, 'clean_' + self.name)(self)
                     if result:
                         await result
 
         for prefix in ('init_', 'pre_', '', 'post_', 'clean_'):
-            method = prefix + name
-            for visitor in self.visitors:
+            method = prefix + self.name
+            for visitor in visitable.visitors:
                 if not hasattr(visitor, method):
                     continue
 
-                rep = {k: v if not isinstance(v, object) else type(v).__name__ for k, v in visitor.__dict__.items()}
-                print(self.name + ' | ', type(visitor).__name__, method, rep)
-                result = getattr(visitor, method)(script)
+                print(
+                    visitable.name + ' | ',
+                    type(visitor).__name__,
+                    method,
+                    ' '.join(f'{k}={v}' for k, v in visitor.__dict__.items())
+                )
+                result = getattr(visitor, method)(self)
                 if result:
                     try:
                         await result
