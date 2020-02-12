@@ -19,8 +19,10 @@ class ConsoleScript(cli2.ConsoleScript):
         import inspect
         from podctl.podfile import Podfile
         self.podfile = Podfile.factory(os.getenv('PODFILE', 'pod.py'))
-        for name in self.podfile.pod.scripts.keys():
-            self[name] = cli2.Callable(name, self.podfile.pod.script(name),)
+        for name, script in self.podfile.pod.scripts.items():
+            cb = self.podfile.pod.script(name)
+            cb.__doc__ = inspect.getdoc(script)
+            self[name] = cli2.Callable(name, cb)
         return super().__call__(*args, **kwargs)
 
     def call(self, command):
