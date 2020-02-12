@@ -1,4 +1,5 @@
 import importlib
+import os
 
 from .container import Container
 from .pod import Pod
@@ -8,8 +9,13 @@ class Podfile:
     def __init__(self, pods, containers):
         self.pods = pods
         self.containers = containers
+
         if not self.pods:
             self.pods['pod'] = Pod(*containers.values())
+
+        for pod in self.pods.values():
+            for container in pod.containers:
+                container.pod = pod
 
     @property
     def pod(self):

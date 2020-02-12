@@ -40,7 +40,11 @@ class ConsoleScript(cli2.ConsoleScript):
         for name, script in self.podfile.pod.scripts.items():
             cb = self.podfile.pod.script(name)
             cb.__doc__ = inspect.getdoc(script) or script.doc
-            self[name] = cli2.Callable(name, cb)
+            self[name] = cli2.Callable(
+                name,
+                cb,
+                options=script.options,
+            )
         return super().__call__(*args, **kwargs)
 
     def call(self, command):

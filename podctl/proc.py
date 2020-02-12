@@ -20,12 +20,16 @@ class PrefixStreamProtocol(asyncio.subprocess.SubprocessStreamProtocol):
         super().__init__(*args, **kwargs)
 
     def pipe_data_received(self, fd, data):
-        if fd in (1, 2):
+        from .console_script import console_script
+        debug = console_script.parser.options.get('debug', False)
+
+        if (debug is True or 'out' in str(debug)) and fd in (1, 2):
             for line in data.split(b'\n'):
                 if not line:
                     continue
                 sys.stdout.buffer.write(
                     self.prefix.encode('utf8') + b' | ' + line + b'\n'
+                    if self.prefix else line + b'\n'
                 )
             sys.stdout.flush()
         super().pipe_data_received(fd, data)
@@ -38,26 +42,6 @@ def protocol_factory(prefix):
             loop=asyncio.events.get_event_loop()
         )
     return _p
-'''
-
-async def proc(args, prefix=None, wait=True, raises=True):
-    loop = asyncio.events.get_event_loop()
-    transport, protocol = await loop.subprocess_exec(
-        protocol_factory(prefix), *args)
-    proc = asyncio.subprocess.Process(transport, protocol, loop)
-
-    if wait:
-        stdout, stderr = await proc.communicate()
-        log['result'] = await proc.wait()
-
-    if raises and log['result']:
-        raise WrongResult()
-
-    if wait:
-        return log
-
-    return proc
-'''
 
 
 class Proc:
@@ -92,7 +76,13 @@ class Proc:
         if self.called:
             raise Exception('Already called: ' + self.cmd)
 
-        print(f'{self.prefix} | + {self.cmd}')
+        from .console_script import console_script
+        debug = console_script.parser.options.get('debug', False)
+        if debug is True or 'proc' in str(debug):
+            if self.prefix:
+                print(f'{self.prefix} | + {self.cmd}')
+            else:
+                print(f'+ {self.cmd}')
 
         loop = asyncio.events.get_event_loop()
         transport, protocol = await loop.subprocess_exec(
@@ -121,3 +111,8 @@ class Proc:
         if self.raises and self.proc.returncode:
             raise WrongResult()
         return self
+
+    @property
+    def json(self):
+        import json
+        return json.loads(self.out)

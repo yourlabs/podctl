@@ -1,6 +1,8 @@
 import os
 import subprocess
 
+from ..exceptions import WrongResult
+
 CI_VARS = (
     # gitlab
     'CI_COMMIT_SHORT_SHA',
@@ -85,3 +87,13 @@ class Commit:
             '--name', script.container.name,
             ':'.join((self.repo, self.tags[0])),
         )
+
+    async def up(self, script):
+        name = '-'.join([script.pod.name, script.container.name])
+        try:
+            await script.exec('podman', 'inspect', name)
+        except WrongResult:
+            await script.exec(
+                'podman', 'run', '-d', '--name', name,
+                ':'.join((self.repo, self.tags[0])),
+            )
