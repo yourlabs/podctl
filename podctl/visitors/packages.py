@@ -1,4 +1,5 @@
 import asyncio
+import copy
 
 from datetime import datetime
 from glob import glob
@@ -8,6 +9,14 @@ from textwrap import dedent
 
 
 class Packages:
+    """
+    The Packages visitor wraps around the container's package manager.
+
+    It's a central piece of the build process, and does iterate over other
+    container visitors in order to pick up packages. For example, the Pip
+    visitor will declare ``self.packages = dict(apt=['python3-pip'])``, and the
+    Packages visitor will pick it up.
+    """
     mgrs = dict(
         apk=dict(
             update='apk update',
@@ -31,99 +40,113 @@ class Packages:
         ),
     )
 
+    installed = []
+
     def __init__(self, *packages, **kwargs):
-        self.packages = list([
-            dedent(l).strip().replace('\n', ' ') for l in packages
-        ])
+        self.packages = []
+
+        for package in packages:
+            line = dedent(package).strip().replace('\n', ' ')
+            self.packages += line.split(' ')
+
         self.mgr = kwargs.pop('mgr') if 'mgr' in kwargs else None
 
     @property
-    def cache(self):
+    def cache_root(self):
         if 'CACHE_DIR' in os.environ:
-            return os.path.join(os.getenv('CACHE_DIR'), self.mgr)
+            return os.path.join(os.getenv('CACHE_DIR'))
         else:
-            return os.path.join(os.getenv('HOME'), '.cache', self.mgr)
+            return os.path.join(os.getenv('HOME'), '.cache')
 
     async def init_build(self, script):
-        paths = ('bin', 'sbin', 'usr/bin', 'usr/sbin')
-        for mgr, cmds in self.mgrs.items():
-            for path in paths:
-                if (script.mnt / path / mgr).exists():
+        cached = script.container.variable('mgr')
+        if cached:
+            self.mgr = cached
+        else:
+            for mgr, cmds in self.mgrs.items():
+                if await script.which(mgr):
                     self.mgr = mgr
-                    self.cmds = cmds
                     break
+
         if not self.mgr:
             raise Exception('Packages does not yet support this distro')
 
+        self.cmds = self.mgrs[self.mgr]
+
+    async def update(self, script):
+        # run pkgmgr_setup functions ie. apk_setup
+        cachedir = await getattr(self, self.mgr + '_setup')(script)
+
+        lastupdate = None
+        if os.path.exists(cachedir + '/lastupdate'):
+            with open(cachedir + '/lastupdate', 'r') as f:
+                try:
+                    lastupdate = int(f.read().strip())
+                except:
+                    pass
+
+        now = int(datetime.now().strftime('%s'))
+        # cache for a week
+        if not lastupdate or now - lastupdate > 604800:
+            # crude lockfile implementation, should work against *most*
+            # race-conditions ...
+            lockfile = cachedir + '/update.lock'
+            if not os.path.exists(lockfile):
+                with open(lockfile, 'w+') as f:
+                    f.write(str(os.getpid()))
+
+                try:
+                    await script.cexec(self.cmds['update'])
+                finally:
+                    os.unlink(lockfile)
+
+                with open(cachedir + '/lastupdate', 'w+') as f:
+                    f.write(str(now))
+            else:
+                while os.path.exists(lockfile):
+                    print(f'{script.container.name} | Waiting for update ...')
+                    await asyncio.sleep(1)
+
     async def build(self, script):
         if not getattr(script.container, '_packages_upgraded', None):
-            # run pkgmgr_setup functions ie. apk_setup
-            await getattr(self, self.mgr + '_setup')(script)
-            # first run on container means inject visitor packages
-            self.packages += script.container.packages
+            await self.update(script)
             await script.cexec(self.cmds['upgrade'])
-            script.container._packages_upgraded = True
 
-        await script.cexec(' '.join([self.cmds['install']] + self.packages))
+            # first run on container means inject visitor packages
+            packages = []
+            for visitor in script.container.visitors:
+                pp = getattr(visitor, 'packages', None)
+                if pp:
+                    if isinstance(pp, list):
+                        packages += pp
+                    elif self.mgr in pp:
+                        packages += pp[self.mgr]
+
+            script.container._packages_upgraded = True
+        else:
+            packages = self.packages
+
+        await script.crexec(*self.cmds['install'].split(' ') + packages)
 
     async def apk_setup(self, script):
-        await script.mount(self.cache, f'/var/cache/{self.mgr}')
+        cachedir = os.path.join(self.cache_root, self.mgr)
+        await script.mount(cachedir, '/var/cache/apk')
         # special step to enable apk cache
         await script.cexec('ln -s /var/cache/apk /etc/apk/cache')
-
-        # do we have to update ?
-        update = False
-        for f in glob(self.cache + '/APKINDEX*'):
-            mtime = os.stat(f).st_mtime
-            now = int(datetime.now().strftime('%s'))
-            # expect hacker to have internet at least once a week
-            if now - mtime > 604800:
-                update = True
-                break
-        else:
-            update = True
-
-        if update:
-            await self.apk_update(script)
-
-    async def apk_update(self, script):
-        while os.path.exists(self.cache + '/update'):
-            print(f'{script.container.name} | Waiting for update ...')
-            await asyncio.sleep(1)
-            return  # update was done by another job
-
-        with open(self.cache + '/update', 'w+') as f:
-            f.write(str(os.getpid()))
-
-        try:
-            await script.cexec(self.cmds['update'])
-        except:
-            raise
-        finally:
-            os.unlink(self.cache + '/update')
+        return cachedir
 
     async def dnf_setup(self, script):
         await script.mount(self.cache, f'/var/cache/{self.mgr}')
         await script.run('echo keepcache=True >> /etc/dnf/dnf.conf')
 
     async def apt_setup(self, script):
-        cache = self.cache + '/$(source $mnt/etc/os-release; echo $VERSION_CODENAME)/'  # noqa
-        await script.run('rm /etc/apt/apt.conf.d/docker-clean')
-        cache_archives = os.path.join(self.cache, 'archives')
+        codename = (await script.exec(
+            f'source {script.mnt}/etc/os-release; echo $VERSION_CODENAME'
+        )).out
+        cachedir = os.path.join(self.cache_root, self.mgr, codename)
+        await script.cexec('rm /etc/apt/apt.conf.d/docker-clean')
+        cache_archives = os.path.join(cachedir, 'archives')
         await script.mount(cache_archives, f'/var/cache/apt/archives')
-        cache_lists = os.path.join(self.cache, 'lists')
+        cache_lists = os.path.join(cachedir, 'lists')
         await script.mount(cache_lists, f'/var/lib/apt/lists')
-
-        await script.run(self.cmds['update'])
-        """
-        await script.append(f'''
-        old="$(find {cache_lists} -name lastup -mtime +3)"
-        if [ -n "$old" ] || ! ls {cache_lists}/lastup; then
-            until [ -z $(lsof /var/lib/dpkg/lock) ]; do sleep 1; done
-            {script._run(self.cmds['update'])}
-            touch {cache_lists}/lastup
-        else
-            echo Cache recent enough, skipping index update.
-        fi
-        ''')
-        """
+        return cachedir

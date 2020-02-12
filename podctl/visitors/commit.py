@@ -42,20 +42,24 @@ class Commit:
         # filter out tags which resolved to None
         self.tags = [t for t in self.tags if t is not None]
 
+        # default tag by default ...
+        if not self.tags:
+            self.tags = ['latest']
+
     async def post_build(self, script):
-        await script.exec(
+        self.sha = (await script.exec(
             'buildah',
             'commit',
             '--format=' + self.format,
             script.ctr,
-        )
+        )).out
 
         if 'master' in self.tags:
             self.tags.append('latest')
 
         if self.tags:
             tags = ' '.join([f'{self.repo}:{tag}' for tag in self.tags])
-            await script.run('buildah', 'tag', self.repo, ' '.join(tags))
+            await script.exec('buildah', 'tag', self.sha, self.repo, tags)
 
             if self.push:
                 user = os.getenv('DOCKER_USER')
@@ -72,5 +76,12 @@ class Commit:
                     )
 
                 for tag in self.tags:
-                    await script.run('podman', 'push', f'{self.repo}:{tag}')
+                    await script.exec('podman', 'push', f'{self.repo}:{tag}')
         await script.umount()
+
+    async def run(self, script):
+        await script.exec(
+            'podman', 'run', '-d',
+            '--name', script.container.name,
+            ':'.join((self.repo, self.tags[0])),
+        )

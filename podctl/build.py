@@ -11,46 +11,67 @@ from .script import Script
 
 
 class Build(Script):
-    def __init__(self, container):
+    """
+    The build script iterates over visitors and runs the build functions, it
+    also provides wrappers around the buildah command.
+    """
+
+    def __init__(self):
         super().__init__()
-        self.container = container
-        self.log = []
         self.mounts = dict()
 
     async def config(self, line):
+        """Run buildah config."""
         return await self.append(f'buildah config {line} {self.ctr}')
 
     async def copy(self, src, dst):
+        """Run buildah copy to copy a file from host into container."""
         return await self.append(f'buildah copy {self.ctr} {src} {dst}')
 
-    async def exec(self, *args, **kwargs):
-        kwargs.setdefault('prefix', self.container.name)
-        proc = await Proc(*args, **kwargs)()
-        if kwargs.get('wait', True):
-            await proc.wait()
-        return proc
-
     async def cexec(self, *args, user=None, **kwargs):
-        _args = ['buildah', 'run', self.ctr]
+        """Execute a command in the container."""
+        _args = ['buildah', 'run']
         if user:
             _args += ['--user', user]
-        _args += ['--', 'sh', '-euc']
-        return await self.exec(*(_args + list(args)))
+        _args += [self.ctr, '--', 'sh', '-euc']
+        return await self.exec(*(_args + [' '.join([str(a) for a in args])]))
+
+    async def crexec(self, *args, **kwargs):
+        """Execute a command in the container as root."""
+        kwargs['user'] = 'root'
+        return await self.cexec(*args, **kwargs)
 
     async def mount(self, src, dst):
+        """Mount a host directory into the container."""
         target = self.mnt / str(dst)[1:]
         await self.exec(f'mkdir -p {src} {target}')
         await self.exec(f'mount -o bind {src} {target}')
         self.mounts[src] = dst
 
     async def umounts(self):
+        """Unmount all mounted directories from the container."""
         for src, dst in self.mounts.items():
             await self.exec('umount', self.mnt / str(dst)[1:])
 
     async def umount(self):
+        """Unmount the buildah container with buildah unmount."""
         await self.exec(f'buildah unmount {self.ctr}')
 
-    def which(self, cmd):
-        for path in self.container.paths:
-            if os.path.exists(os.path.join(self.mnt, path[1:], cmd)):
-                return True
+    async def paths(self):
+        """Return the list of $PATH directories"""
+        return (await self.cexec('echo $PATH')).out.split(':')
+
+    async def which(self, cmd):
+        """
+        Return the first path to the cmd in the container.
+
+        If cmd argument is a list then it will try all commands.
+        """
+        if not isinstance(cmd, (list, tuple)):
+            cmd = [cmd]
+
+        for path in await self.paths():
+            for c in cmd:
+                p = os.path.join(self.mnt, path[1:], c)
+                if os.path.exists(p):
+                    return p[len(str(self.mnt)):]

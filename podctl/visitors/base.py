@@ -9,5 +9,7 @@ class Base:
         script.ctr = Path((await script.exec('buildah', 'from', self.base)).out)
         script.mnt = Path((await script.exec('buildah', 'mount', script.ctr)).out)
 
-    async def post_build(self, script):
+    async def clean_build(self, script):
         await script.umounts()
+        await script.umount()
+        proc = await script.exec('buildah', 'rm', script.ctr, raises=False)

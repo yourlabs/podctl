@@ -9,5 +9,6 @@ from .mount import Mount  # noqa
 from .packages import Packages  # noqa
 from .pip import Pip  # noqa
 from .run import Run  # noqa
-from .template import Template  # noqa
+from .template import Append, Template  # noqa
 from .user import User  # noqa
+from .uwsgi import uWSGI  # noqa
