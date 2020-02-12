@@ -4,7 +4,6 @@ import os
 
 from .build import Build
 from .container import Container
-from .run import Run
 from .script import Script
 from .visitable import Visitable
 
@@ -12,7 +11,7 @@ from .visitable import Visitable
 class Pod(Visitable):
     default_scripts = dict(
         build=Build(),
-        run=Run(),
+        run=Script('run', 'Run a container command'),
     )
 
     @property

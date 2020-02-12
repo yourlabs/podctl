@@ -4,8 +4,9 @@ from .proc import Proc
 
 
 class Script:
-    def __init__(self, name=None):
+    def __init__(self, name=None, doc=None):
         self.name = name or type(self).__name__.lower()
+        self.doc = doc or 'Custom script'
 
     async def exec(self, *args, **kwargs):
         """Execute a command on the host."""
