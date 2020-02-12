@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import cli2
+import os
 import textwrap
 
 from .proc import Proc
@@ -19,6 +20,7 @@ class Script:
             immediate=True,
         ),
     ]
+    unshare = False
 
     def __init__(self, name=None, doc=None):
         self.name = name or type(self).__name__.lower()
@@ -79,6 +81,11 @@ class Script:
                         raise
 
     async def run(self, *args, **kwargs):
+        if self.unshare and os.getuid() != 0:
+            import sys
+            # restart under buildah unshare environment !
+            os.execvp('buildah', ['buildah', 'unshare'] + sys.argv)
+
         for key, value in kwargs.items():
             setattr(self, key, value)
 

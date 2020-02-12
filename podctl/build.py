@@ -15,6 +15,7 @@ class Build(Script):
     The build script iterates over visitors and runs the build functions, it
     also provides wrappers around the buildah command.
     """
+    unshare = True
 
     def __init__(self):
         super().__init__()
