@@ -61,7 +61,8 @@ class Commit:
 
         if self.tags:
             tags = ' '.join([f'{self.repo}:{tag}' for tag in self.tags])
-            await script.exec('buildah', 'tag', self.sha, self.repo, tags)
+            for tag in self.tags:
+                await script.exec('buildah', 'tag', self.sha, self.repo, tag)
 
             if self.push:
                 user = os.getenv('DOCKER_USER')
