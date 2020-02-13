@@ -7,11 +7,6 @@ build:
     - .cache
     key: cache
 
-qa:
-  stage: test
-  image: yourlabs/python
-  script: flake8 podctl
-
 test:
   stage: test
   image: yourlabs/python
