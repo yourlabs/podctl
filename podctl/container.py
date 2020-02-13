@@ -43,7 +43,6 @@ class Container(Visitable):
             await script.exec('podman', 'inspect', self.container_name)
         except WrongResult as ee:
             output('Container creating', self.name)
-            breakpoint()
             await script.exec(
                 'podman', 'run', '-d', '--name', self.container_name,
                 self.image_name,

@@ -35,7 +35,19 @@ async def test(*args, **kwargs):
                 '\n\x1b[1;38;5;160;48;5;118m  BUILD START \x1b[0m'
                 + ' ' + podfile.path + '\n'
             )
-            podfile.pod.script('build')()
+
+            old_exit_code = console_script.exit_code
+            console_script.exit_code = 0
+            try:
+                await podfile.pod.script('build')()
+            except Exception as e:
+                report.append(('build ' + candidate, False))
+                continue
+
+            if console_script.exit_code != 0:
+                report.append(('build ' + candidate, False))
+                continue
+            console_script.exit_code = old_exit_code
 
             for name, test in podfile.tests.items():
                 name = '::'.join([podfile.path, name])

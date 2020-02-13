@@ -104,25 +104,6 @@ class Script:
         sys.stdout.flush()
 
     async def run(self, *args, **kwargs):
-        if self.unshare and os.getuid() != 0:
-            from podctl.console_script import console_script
-            # restart under buildah unshare environment !
-            argv = [
-                'buildah', 'unshare',
-                sys.argv[0],  # current podctl location
-            ] + console_script.parser.argv + [
-                type(self).__name__.lower()  # script name ?
-            ] + list(args)
-            print('Executing', ' '.join(argv))
-            pp = subprocess.Popen(
-                argv,
-                stderr=sys.stderr,
-                stdin=sys.stdin,
-                stdout=sys.stdout,
-            )
-            pp.communicate()
-            return pp.returncode
-
         for key, value in kwargs.items():
             setattr(self, key, value)
 

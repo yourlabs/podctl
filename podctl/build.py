@@ -4,9 +4,10 @@ import asyncio
 import signal
 import shlex
 import subprocess
+import sys
 import textwrap
 
-from .proc import Proc
+from .proc import Proc, output
 from .script import Script
 
 
@@ -20,6 +21,8 @@ class Build(Script):
     def __init__(self):
         super().__init__()
         self.mounts = dict()
+        self.ctr = None
+        self.mnt = None
 
     async def config(self, line):
         """Run buildah config."""
@@ -56,7 +59,8 @@ class Build(Script):
 
     async def umount(self):
         """Unmount the buildah container with buildah unmount."""
-        await self.exec(f'buildah unmount {self.ctr}')
+        if self.ctr:
+            await self.exec(f'buildah unmount {self.ctr}')
 
     async def paths(self):
         """Return the list of $PATH directories"""
@@ -79,3 +83,40 @@ class Build(Script):
 
     def __repr__(self):
         return f'Build'
+
+    async def run(self, *args, **kwargs):
+        if os.getuid() == 0:
+            return await super().run(*args, **kwargs)
+
+        from podctl.console_script import console_script
+        # restart under buildah unshare environment !
+        argv = [
+            'buildah', 'unshare',
+            sys.argv[0],  # current podctl location
+        ]
+        if console_script.options.get('debug') is True:
+            argv.append('-d')
+        elif isinstance(console_script.options.get('debug'), str):
+            argv.append('-d=' + console_script.options.get('debug'))
+        argv += [
+            type(self).__name__.lower(),  # script name ?
+        ]
+        output(' '.join(argv), 'EXECUTION')
+
+        proc = await asyncio.create_subprocess_shell(
+            shlex.join(argv),
+            stderr=sys.stderr,
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+        )
+        await proc.communicate()
+        console_script.exit_code = proc.returncode
+        return
+        pp = subprocess.Popen(
+            argv,
+            stderr=sys.stderr,
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+        )
+        pp.communicate()
+        console_script.exit_code = pp.returncode

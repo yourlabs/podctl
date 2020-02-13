@@ -7,10 +7,15 @@ build:
     - .cache
     key: cache
 
-test:
+py-test:
   stage: test
   image: yourlabs/python
-  script: pip install -e . && cd examples && podctl test -d simple
+  script: pip install -e . && py.test -s
+
+pod-test:
+  stage: test
+  image: yourlabs/python
+  script: pip install -e . && examples/simple && podctl test -d .
 
 pypi:
   stage: deploy

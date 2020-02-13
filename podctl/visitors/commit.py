@@ -20,19 +20,23 @@ class Commit:
         self.repo = repo
         self.registry = registry or 'localhost'
         self.push = push or os.getenv('CI')
+        self.tags = tags or []
 
         # figure out registry host
         if '/' in self.repo and not registry:
             first = self.repo.split('/')[0]
             if '.' in first or ':' in first:
                 self.registry = self.repo.split('/')[0]
+                self.repo = '/'.join(self.repo.split('/')[1:])
+
+        if ':' in self.repo and not tags:
+            self.tags = [self.repo.split(':')[1]]
+            self.repo = self.repo.split(':')[0]
 
         # docker.io currently has issues with oci format
         self.format = format or 'oci'
         if self.registry == 'docker.io':
             self.format = 'docker'
-
-        self.tags = tags or []
 
         # figure tags from CI vars
         if not self.tags:
