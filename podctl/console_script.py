@@ -31,6 +31,12 @@ async def test(*args, **kwargs):
                 continue
             podfile = Podfile.factory(candidate)
 
+            # disable push
+            for name, container in podfile.containers.items():
+                commit = container.visitor('commit')
+                if commit:
+                    commit.push = False
+
             output.print(
                 '\n\x1b[1;38;5;160;48;5;118m  BUILD START \x1b[0m'
                 + ' ' + podfile.path + '\n'
