@@ -3,8 +3,9 @@ import copy
 import cli2
 import os
 import textwrap
+import sys
 
-from .proc import Proc
+from .proc import output, Proc
 
 
 class Script:
@@ -52,13 +53,18 @@ class Script:
                     method = 'clean_' + self.name
                     result = getattr(visitor, method)(self)
                     if debug is True or 'visit' in str(debug):
-                        print(
-                            getattr(visitable, 'name', '') + ' | ',
-                            '.'.join([type(visitor).__name__, method]),
-                            ' '.join(f'{k}={v}' for k, v in visitor.__dict__.items())
+                        output(
+                            ''.join([
+                                '.'.join([type(visitor).__name__, method]),
+                                '(',
+                                ', '.join(f'{k}={v}' for k, v in visitor.__dict__.items()),
+                                ')'
+                            ]),
+                            getattr(visitable, 'name', None)
                         )
                     if result:
                         await result
+            sys.stdout.flush()
 
         for prefix in ('init_', 'pre_', '', 'post_', 'clean_'):
             method = prefix + self.name
@@ -67,11 +73,16 @@ class Script:
                     continue
 
                 if debug is True or 'visit' in str(debug):
-                    print(
-                        getattr(visitable, 'name', '') + ' | ',
-                        '.'.join([type(visitor).__name__, method]),
-                        ' '.join(f'{k}={v}' for k, v in visitor.__dict__.items())
+                    output(
+                        ''.join([
+                            '.'.join([type(visitor).__name__, method]),
+                            '(',
+                            ', '.join(f'{k}={v}' for k, v in visitor.__dict__.items()),
+                            ')'
+                        ]),
+                        getattr(visitable, 'name', None)
                     )
+
                 result = getattr(visitor, method)(self)
                 if result:
                     try:
@@ -79,6 +90,7 @@ class Script:
                     except Exception as e:
                         await clean()
                         raise
+        sys.stdout.flush()
 
     async def run(self, *args, **kwargs):
         if self.unshare and os.getuid() != 0:
