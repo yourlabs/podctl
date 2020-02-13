@@ -14,12 +14,12 @@ class Copy:
             self.owner = script.variable('user')
 
     async def build(self, script):
-        await script.run(f'sudo mkdir -p {self.dst}')
+        await script.crexec(f'mkdir -p {self.dst}')
         for item in self.src:
-            await script.append(f'cp -a {item} $mnt{self.dst}')
+            await script.exec(f'cp -a {item} {script.mnt}{self.dst}')
 
         if self.mode:
-            await script.run(f'sudo chmod {self.mode} $mnt{self.dst}')
+            await script.crexec(f'chmod {self.mode} {script.mnt}{self.dst}')
 
         if self.owner:
-            await script.run(f'sudo chown -R {self.owner} $mnt{self.dst}')
+            await script.crexec(f'chown -R {self.owner} {script.mnt}{self.dst}')

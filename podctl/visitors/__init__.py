@@ -11,4 +11,3 @@ from .pip import Pip  # noqa
 from .run import Run  # noqa
 from .template import Append, Template  # noqa
 from .user import User  # noqa
-from .uwsgi import uWSGI  # noqa

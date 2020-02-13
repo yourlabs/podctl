@@ -29,9 +29,9 @@ class Packages:
             install='apt-get -y --no-install-recommends install',
         ),
         dnf=dict(
-            update='dnf update',
-            upgrade='dnf upgrade --exclude container-selinux --best --assumeyes',  # noqa
-            install='dnf install --exclude container-selinux --setopt=install_weak_deps=False --best --assumeyes',  # noqa
+            update='dnf makecache --assumeyes',
+            upgrade='dnf upgrade --best --assumeyes --skip-broken',  # noqa
+            install='dnf install --setopt=install_weak_deps=False --best --assumeyes',  # noqa
         ),
         yum=dict(
             update='yum update',
