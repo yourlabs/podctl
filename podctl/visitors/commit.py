@@ -60,9 +60,9 @@ class Commit:
             self.tags.append('latest')
 
         if self.tags:
-            tags = ' '.join([f'{self.repo}:{tag}' for tag in self.tags])
             for tag in self.tags:
-                await script.exec('buildah', 'tag', self.sha, self.repo, tag)
+                await script.exec('buildah', 'tag', self.sha, self.repo,
+                        f'{self.repo}:{tag}')
 
             if self.push:
                 user = os.getenv('DOCKER_USER')
