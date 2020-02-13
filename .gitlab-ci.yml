@@ -1,13 +1,3 @@
-qa:
-  stage: test
-  image: yourlabs/python
-  script: flake8 podctl
-
-test:
-  stage: test
-  image: yourlabs/python
-  script: pip install -e . && py.test -v tests
-
 build:
   stage: test
   image: yourlabs/podctl
@@ -16,6 +6,16 @@ build:
     paths:
     - .cache
     key: cache
+
+qa:
+  stage: test
+  image: yourlabs/python
+  script: flake8 podctl
+
+test:
+  stage: test
+  image: yourlabs/python
+  script: pip install -e . && cd examples && podctl test -d simple
 
 pypi:
   stage: deploy
