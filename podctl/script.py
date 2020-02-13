@@ -47,6 +47,14 @@ class Script:
 
         visitors = visitable.visitors
 
+        def val(k, v):
+            if isinstance(v, list) and len(v) > 1:
+                return '[' + str(v[-1]) + '...]'
+
+            if k == 'scripts':
+                return dict()
+            return v
+
         results = []
         async def clean():
             for visitor in visitable.visitors:
@@ -58,10 +66,11 @@ class Script:
                             ''.join([
                                 '.'.join([type(visitor).__name__, method]),
                                 '(',
-                                ', '.join(f'{k}={v}' for k, v in visitor.__dict__.items()),
+                                ', '.join(f'{k}={val(k, v)}' for k, v in visitor.__dict__.items()),
                                 ')'
                             ]),
-                            getattr(visitable, 'name', None)
+                            getattr(visitor, 'name',
+                                getattr(visitable, 'name', None))
                         )
                     if result:
                         await result
@@ -78,10 +87,11 @@ class Script:
                         ''.join([
                             '.'.join([type(visitor).__name__, method]),
                             '(',
-                            ', '.join(f'{k}={v}' for k, v in visitor.__dict__.items()),
+                            ', '.join(f'{k}={val(k, v)}' for k, v in visitor.__dict__.items()),
                             ')'
                         ]),
-                        getattr(visitable, 'name', None)
+                        getattr(visitor, 'name',
+                            getattr(visitable, 'name', None))
                     )
 
                 result = getattr(visitor, method)(self)

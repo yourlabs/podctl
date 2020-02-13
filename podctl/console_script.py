@@ -31,6 +31,12 @@ async def test(*args, **kwargs):
                 continue
             podfile = Podfile.factory(candidate)
 
+            output.print(
+                '\n\x1b[1;38;5;160;48;5;118m  BUILD START \x1b[0m'
+                + ' ' + podfile.path + '\n'
+            )
+            podfile.pod.script('build')()
+
             for name, test in podfile.tests.items():
                 name = '::'.join([podfile.path, name])
                 output.print(
@@ -65,14 +71,16 @@ async def test(*args, **kwargs):
         '\n\x1b[1;38;5;200;48;5;44m TEST TOTAL: \x1b[0m'
         + str(len(report))
     )
-    output.print(
-        '\n\x1b[1;38;5;15;48;5;196m    TEST FAIL: \x1b[0m'
-        + str(len(failures))
-    )
-    output.print(
-        '\n\x1b[1;38;5;200;48;5;44m TEST SUCCESS: \x1b[0m'
-        + str(len(success))
-    )
+    if success:
+        output.print(
+            '\n\x1b[1;38;5;200;48;5;44m TEST SUCCESS: \x1b[0m'
+            + str(len(success))
+        )
+    if failures:
+        output.print(
+            '\n\x1b[1;38;5;15;48;5;196m    TEST FAIL: \x1b[0m'
+            + str(len(failures))
+        )
 
     if failures:
         console_script.exit_code = 1

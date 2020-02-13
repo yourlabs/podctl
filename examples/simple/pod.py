@@ -21,9 +21,8 @@ async def test_pod_story2(pod):
 async def test_pod_story(pod):
     await pod.script('down')()
     await pod.script('build')('ex')
-    return
-    assert await pod.script('up')() == 0
-    assert await pod.script('down')() == 0
+    await pod.script('up')()
+    await pod.script('down')()
 
 
 async def aoeutest_podctl(host):

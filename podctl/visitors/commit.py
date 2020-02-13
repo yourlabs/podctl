@@ -48,6 +48,12 @@ class Commit:
         if not self.tags:
             self.tags = ['latest']
 
+        # default tag for master too
+        if 'master' in self.tags:
+            self.tags.append('latest')
+
+        self.repotags = [f'{self.registry}/{self.repo}:{tag}' for tag in self.tags]
+
     async def post_build(self, script):
         self.sha = (await script.exec(
             'buildah',
@@ -56,13 +62,9 @@ class Commit:
             script.ctr,
         )).out
 
-        if 'master' in self.tags:
-            self.tags.append('latest')
-
         if self.tags:
-            for tag in self.tags:
-                await script.exec('buildah', 'tag', self.sha, self.repo,
-                        f'{self.repo}:{tag}')
+            for tag in self.repotags:
+                await script.exec('buildah', 'tag', self.sha, self.repo, tag)
 
             if self.push:
                 user = os.getenv('DOCKER_USER')
@@ -79,7 +81,7 @@ class Commit:
                     )
 
                 for tag in self.tags:
-                    await script.exec('podman', 'push', f'{self.repo}:{tag}')
+                    await script.exec('podman', 'push', tag)
         await script.umount()
 
     def __repr__(self):

@@ -1,5 +1,6 @@
 from .build import Build
 from .exceptions import WrongResult
+from .proc import output
 from .visitable import Visitable
 
 
@@ -11,6 +12,10 @@ class Container(Visitable):
     @property
     def container_name(self):
         return '-'.join([self.pod.name, self.name])
+
+    @property
+    def image_name(self):
+        return self.pod.visitor(self.name).variable('repotags')[0]
 
     async def down(self, script):
         try:
@@ -37,17 +42,14 @@ class Container(Visitable):
         try:
             await script.exec('podman', 'inspect', self.container_name)
         except WrongResult as ee:
-            tag = ':'.join((
-                self.variable('repo'),
-                self.variable('tags')[0],
-            ))
-            print(f'{self.name} | Container creating')
+            output('Container creating', self.name)
+            breakpoint()
             await script.exec(
                 'podman', 'run', '-d', '--name', self.container_name,
-                tag,
+                self.image_name,
             )
-            print(f'{self.name} | Container created')
+            output('Container created', self.name)
         else:
-            print(f'{self.name} | Container starting')
+            output('Container starting', self.name)
             await script.exec('podman', 'start', self.container_name)
-            print(f'{self.name} | Container started')
+            output('Container started', self.name)

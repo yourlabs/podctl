@@ -10,15 +10,12 @@ class Visitable:
         self.scripts = deepcopy(self.default_scripts)
         self.scripts.update(scripts)
 
-        '''
-    def script(self, name):
-        script = copy(self.scripts[name])
-        return script
-'''
-
     def visitor(self, name):
         for visitor in self.visitors:
-            if name.lower() == type(visitor).__name__.lower():
+            if name.lower() in (
+                type(visitor).__name__.lower(),
+                getattr(visitor, 'name', '')
+            ):
                 return visitor
 
     def variable(self, name):
