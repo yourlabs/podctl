@@ -20,7 +20,10 @@ from .service import Service
 async def test(*args, **kwargs):
     """Run podctl test over a bunch of paths."""
     report = []
-
+    try:
+      columns = os.get_terminal_size(0)[0]
+    except:
+      columns = 80
     for arg in args:
         candidates = [
             os.path.join(os.getcwd(), arg, 'pod.py'),
@@ -58,46 +61,81 @@ async def test(*args, **kwargs):
             for name, test in podfile.tests.items():
                 name = '::'.join([podfile.path, name])
                 output.print(
-                    '\n\x1b[1;38;5;160;48;5;118m   TEST START \x1b[0m'
-                    + ' ' + name + '\n'
+                        "\x1b[1;38;5;15m--> [TEST START]   "
+                        + "\x1b[0m\x1b[1;38;5;226m    [" 
+                        + name 
+                        + "] "
+                        + "#" * (int(columns) - (26 + len(name)))
+                        + "\x1b[0m\n"
                 )
 
                 try:
                     await test(podfile.pod)
                 except Exception as e:
                     report.append((name, False))
-                    output.print('\x1b[1;38;5;15;48;5;196m    TEST FAIL \x1b[0m' + name)
+                    output.print(
+                            "\x1b[1;38;5;15;48;5;196m[x] TEST FAIL  "
+                            + "\x1b[1;38;5;196;48;5;15m   [" 
+                            + name 
+                            + "] "
+                            + " " * (int(columns) - (21 + len(name)))
+                            + "\x1b[0m\n"
+                    )
                 else:
                     report.append((name, True))
-                    output.print('\x1b[1;38;5;200;48;5;44m TEST SUCCESS \x1b[0m' + name)
+                    output.print(
+                            "\x1b[1;38;5;10m[√] [TEST SUCCESS]  "
+                            + "\x1b[0m\x1b[1;38;5;82m   [" 
+                            + name 
+                            + "] "
+                            + "-" * (int(columns) - (26 + len(name)))
+                            + "\x1b[0m\n"
+                    )
                 output.print('\n')
 
     print('\n')
 
     for name, success in report:
         if success:
-            output.print('\n\x1b[1;38;5;200;48;5;44m TEST SUCCESS \x1b[0m' + name)
+            output.print(
+                    "\x1b[1;38;5;10m  [TEST SUCCESS]  "
+                    + "\x1b[0m\x1b[1;38;5;10m  [" 
+                    + name 
+                    + "] "
+                    + "-" * (int(columns) - (23 + len(name)))
+                    + "\x1b[0m\n"
+            )
         else:
-            output.print('\n\x1b[1;38;5;15;48;5;196m    TEST FAIL \x1b[0m' + name)
+            output.print(
+                    "\x1b[1;38;5;15;48;5;196m  [TEST FAIL]    "
+                    + "\x1b[1;38;5;196;48;5;15m   [" 
+                    + name 
+                    + "] "
+                    + " " * (int(columns) - ( 23 + len(name)))
+                    + "\x1b[0m\n"
+            )
 
-    print('\n')
+    print("\n\nSummary:")
+    print('########')
 
     success = [*filter(lambda i: i[1], report)]
     failures = [*filter(lambda i: not i[1], report)]
 
     output.print(
-        '\n\x1b[1;38;5;200;48;5;44m TEST TOTAL: \x1b[0m'
+        '\n\x1b[1;38;5;200m TEST TOTAL:    \x1b[0m '
         + str(len(report))
     )
     if success:
         output.print(
-            '\n\x1b[1;38;5;200;48;5;44m TEST SUCCESS: \x1b[0m'
+            '\n\x1b[1;38;5;10m TEST SUCCESS:  \x1b[0m '
             + str(len(success))
+            + "\n"
         )
     if failures:
         output.print(
-            '\n\x1b[1;38;5;15;48;5;196m    TEST FAIL: \x1b[0m'
+            '\x1b[1;38;5;196m TEST FAIL:      \x1b[0m'
             + str(len(failures))
+            + "\n"
         )
 
     if failures:
