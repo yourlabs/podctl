@@ -70,11 +70,10 @@ class Script:
                                 ')'
                             ]),
                             getattr(visitor, 'name',
-                                getattr(visitable, 'name', None))
+                                getattr(visitable, 'name', None)),
                         )
                     if result:
                         await result
-            sys.stdout.flush()
 
         for prefix in ('init_', 'pre_', '', 'post_', 'clean_'):
             method = prefix + self.name
@@ -101,7 +100,6 @@ class Script:
                     except Exception as e:
                         await clean()
                         raise
-        sys.stdout.flush()
 
     async def run(self, *args, **kwargs):
         for key, value in kwargs.items():

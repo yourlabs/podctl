@@ -101,7 +101,7 @@ class Build(Script):
         argv += [
             type(self).__name__.lower(),  # script name ?
         ]
-        output(' '.join(argv), 'EXECUTION')
+        output(' '.join(argv), 'EXECUTION', flush=True)
 
         proc = await asyncio.create_subprocess_shell(
             shlex.join(argv),

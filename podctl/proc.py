@@ -28,7 +28,7 @@ class Output:
         self.prefixes = dict()
         self.prefix_length = 0
 
-    def __call__(self, line, prefix, highlight=True):
+    def __call__(self, line, prefix, highlight=True, flush=True):
         if prefix and prefix not in self.prefixes:
             self.prefixes[prefix] = (
                 self.colors[len([*self.prefixes.keys()]) - 1]
@@ -57,6 +57,9 @@ class Output:
             )
             + self.highlight(line, highlight)
         ).encode('utf8'))
+
+        if flush:
+            sys.stdout.flush()
 
     def cmd(self, line, prefix):
         self(
@@ -108,7 +111,7 @@ class PrefixStreamProtocol(asyncio.subprocess.SubprocessStreamProtocol):
             for line in data.split(b'\n'):
                 if not line:
                     continue
-                output(line, self.prefix)
+                output(line, self.prefix, flush=False)
             sys.stdout.flush()
         super().pipe_data_received(fd, data)
 
