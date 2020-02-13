@@ -84,7 +84,7 @@ class Commit:
                         self.registry,
                     )
 
-                for tag in self.tags:
+                for tag in self.repotags:
                     await script.exec('podman', 'push', tag)
         await script.umount()
 
