@@ -9,9 +9,73 @@ import os
 import sys
 
 from .container import Container
-from .pod import Pod
 from .exceptions import Mistake, WrongResult
+from .pod import Pod
+from .podfile import Podfile
+from .proc import output
 from .service import Service
+
+
+@cli2.option('debug', alias='d', help='Display debug output.')
+async def test(*args, **kwargs):
+    """Run podctl test over a bunch of paths."""
+    report = []
+
+    for arg in args:
+        candidates = [
+            os.path.join(os.getcwd(), arg, 'pod.py'),
+            os.path.join(os.getcwd(), arg, 'pod_test.py'),
+        ]
+        for candidate in candidates:
+            if not os.path.exists(candidate):
+                continue
+            podfile = Podfile.factory(candidate)
+
+            for name, test in podfile.tests.items():
+                name = '::'.join([podfile.path, name])
+                output.print(
+                    '\n\x1b[1;38;5;160;48;5;118m   TEST START \x1b[0m'
+                    + ' ' + name + '\n'
+                )
+
+                try:
+                    await test(podfile.pod)
+                except Exception as e:
+                    report.append((name, False))
+                    output.print('\x1b[1;38;5;15;48;5;196m    TEST FAIL \x1b[0m' + name)
+                else:
+                    report.append((name, True))
+                    output.print('\x1b[1;38;5;200;48;5;44m TEST SUCCESS \x1b[0m' + name)
+                output.print('\n')
+
+    print('\n')
+
+    for name, success in report:
+        if success:
+            output.print('\n\x1b[1;38;5;200;48;5;44m TEST SUCCESS \x1b[0m' + name)
+        else:
+            output.print('\n\x1b[1;38;5;15;48;5;196m    TEST FAIL \x1b[0m' + name)
+
+    print('\n')
+
+    success = [*filter(lambda i: i[1], report)]
+    failures = [*filter(lambda i: not i[1], report)]
+
+    output.print(
+        '\n\x1b[1;38;5;200;48;5;44m TEST TOTAL: \x1b[0m'
+        + str(len(report))
+    )
+    output.print(
+        '\n\x1b[1;38;5;15;48;5;196m    TEST FAIL: \x1b[0m'
+        + str(len(failures))
+    )
+    output.print(
+        '\n\x1b[1;38;5;200;48;5;44m TEST SUCCESS: \x1b[0m'
+        + str(len(success))
+    )
+
+    if failures:
+        console_script.exit_code = 1
 
 
 class ConsoleScript(cli2.ConsoleScript):
@@ -38,18 +102,18 @@ class ConsoleScript(cli2.ConsoleScript):
         self.options = dict()
 
     def __call__(self, *args, **kwargs):
-        import inspect
-        from podctl.podfile import Podfile
-        self.podfile = Podfile.factory(os.getenv('PODFILE', 'pod.py'))
-        for name, script in self.podfile.pod.scripts.items():
-            cb = self.podfile.pod.script(name)
-            cb.__doc__ = inspect.getdoc(script) or script.doc
-            self[name] = cli2.Callable(
-                name,
-                cb,
-                options={o.name: o for o in script.options},
-                color=getattr(script, 'color', cli2.YELLOW),
-            )
+        podfile = os.getenv('PODFILE', 'pod.py')
+        if os.path.exists(podfile):
+            self.podfile = Podfile.factory(podfile)
+            for name, script in self.podfile.pod.scripts.items():
+                cb = self.podfile.pod.script(name)
+                cb.__doc__ = inspect.getdoc(script) or script.doc
+                self[name] = cli2.Callable(
+                    name,
+                    cb,
+                    options={o.name: o for o in script.options},
+                    color=getattr(script, 'color', cli2.YELLOW),
+                )
         return super().__call__(*args, **kwargs)
 
     def call(self, command):
@@ -59,10 +123,10 @@ class ConsoleScript(cli2.ConsoleScript):
             return super().call(command)
         except Mistake as e:
             print(e)
-            sys.exit(1)
+            self.exit_code = 1
         except WrongResult as e:
             print(e)
-            sys.exit(e.proc.rc)
+            self.exit_code = e.proc.rc
 
 
 console_script = ConsoleScript(__doc__).add_module('podctl.console_script')

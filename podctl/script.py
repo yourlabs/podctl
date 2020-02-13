@@ -3,6 +3,7 @@ import copy
 import cli2
 import os
 import textwrap
+import subprocess
 import sys
 
 from .proc import output, Proc
@@ -94,9 +95,20 @@ class Script:
 
     async def run(self, *args, **kwargs):
         if self.unshare and os.getuid() != 0:
-            import sys
             # restart under buildah unshare environment !
-            os.execvp('buildah', ['buildah', 'unshare'] + sys.argv)
+            argv = [
+                'buildah', 'unshare',
+                sys.argv[0],  # current podctl location
+                type(self).__name__.lower()  # script name ?
+            ] + list(args)
+            pp = subprocess.Popen(
+                argv,
+                stderr=sys.stderr,
+                stdin=sys.stdin,
+                stdout=sys.stdout,
+            )
+            pp.communicate()
+            return pp.returncode
 
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -122,4 +134,4 @@ class Script:
             )
             for container in containers
         ]
-        return await asyncio.gather(*procs)
+        await asyncio.gather(*procs)

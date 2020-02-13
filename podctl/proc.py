@@ -29,21 +29,18 @@ class Output:
         self.prefix_length = 0
 
     def __call__(self, line, prefix, highlight=True):
-        if prefix not in self.prefixes:
+        if prefix and prefix not in self.prefixes:
             self.prefixes[prefix] = (
                 self.colors[len([*self.prefixes.keys()]) - 1]
             )
             if len(prefix) > self.prefix_length:
                 self.prefix_length = len(prefix)
 
-        prefix_color = self.prefixes[prefix]
-        prefix_padding = '.' * (self.prefix_length - len(prefix) - 2)
+        prefix_color = self.prefixes[prefix] if prefix else ''
+        prefix_padding = '.' * (self.prefix_length - len(prefix) - 2) if prefix else ''
         if prefix_padding:
             prefix_padding = ' ' + prefix_padding + ' '
 
-        if not prefix:
-            breakpoint()
-        #breakpoint()
         sys.stdout.buffer.write((
             (
                 prefix_color
@@ -68,6 +65,13 @@ class Output:
             + Style.RESET_ALL
             + self.highlight(line, 'bash'),
             prefix,
+            highlight=False
+        )
+
+    def print(self, content):
+        self(
+            content,
+            prefix=None,
             highlight=False
         )
 

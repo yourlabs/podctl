@@ -6,7 +6,7 @@ import sys
 
 from .build import Build
 from .exceptions import WrongResult
-from .proc import Proc
+from .proc import output, Proc
 from .script import Script
 
 

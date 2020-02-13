@@ -6,9 +6,11 @@ from .pod import Pod
 
 
 class Podfile:
-    def __init__(self, pods, containers):
+    def __init__(self, pods, containers, path, tests):
         self.pods = pods
         self.containers = containers
+        self.path = path
+        self.tests = tests
 
         if not self.pods:
             self.pods['pod'] = Pod(*containers.values())
@@ -25,6 +27,7 @@ class Podfile:
     def factory(cls, path):
         containers = dict()
         pods = dict()
+        tests = dict()
         spec = importlib.util.spec_from_file_location('pod', path)
         pod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(pod)
@@ -35,5 +38,7 @@ class Podfile:
             elif isinstance(value, Pod):
                 pods[name] = value
                 value.name = name
+            elif callable(value) and value.__name__.startswith('test_'):
+                tests[value.__name__] = value
 
-        return cls(pods, containers)
+        return cls(pods, containers, path, tests)

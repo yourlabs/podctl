@@ -18,6 +18,13 @@ class Pod(Visitable):
         ),
     )
 
+    def script(self, name):
+        async def cb(*args, **kwargs):
+            asyncio.events.get_event_loop()
+            kwargs['pod'] = self
+            return await self.scripts[name].run(*args, **kwargs)
+        return cb
+
     async def down(self, script):
         try:
             await script.exec('podman', 'pod', 'inspect', self.name)
@@ -46,13 +53,6 @@ class Pod(Visitable):
     @property
     def containers(self):
         return [i for i in self.visitors if type(i) == Container]
-
-    def script(self, name):
-        async def cb(*args, **kwargs):
-            asyncio.events.get_event_loop()
-            kwargs['pod'] = self
-            return await self.scripts[name].run(*args, **kwargs)
-        return cb
 
     def __repr__(self):
         return self.name
