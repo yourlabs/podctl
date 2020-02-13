@@ -14,7 +14,7 @@ py-test:
 
 pod-test:
   stage: test
-  image: yourlabs/python
+  image: yourlabs/podctl
   script: pip install -e . && cd examples/simple && podctl test -d .
 
 pypi:
