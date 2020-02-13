@@ -5,7 +5,7 @@ setup(
     name='podctl',
     versioning='dev',
     setup_requires='setupmeta',
-    install_requires=['cli2'],
+    install_requires=['cli2', 'pygments'],
     extras_require=dict(
         test=[
             'freezegun',

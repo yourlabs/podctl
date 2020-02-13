@@ -139,6 +139,7 @@ class Packages:
         cachedir = os.path.join(self.cache_root, self.mgr)
         await script.mount(cachedir, f'/var/cache/{self.mgr}')
         await script.run('echo keepcache=True >> /etc/dnf/dnf.conf')
+        return cachedir
 
     async def apt_setup(self, script):
         codename = (await script.exec(
